@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class Replenish extends JavaPlugin implements Listener {
 
@@ -21,56 +22,93 @@ public class Replenish extends JavaPlugin implements Listener {
     @EventHandler
     public void onCropBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
+        Material cropType = block.getType();
+        Crop crop = Crop.fromMaterial(cropType);
+        if (crop == null) return;
 
-        switch (block.getType()) {
-            case WHEAT:
-            case POTATOES:
-            case CARROTS:
-            case NETHER_WART:
-                Material seedMaterial = materialToSeed(block.getType());
-                if (seedMaterial != null && event.getPlayer().getInventory().contains(seedMaterial)) {
-                    event.setCancelled(true);
-                    block.getWorld().dropItem(block.getLocation(), new ItemStack(seedMaterial));
-                    block.setType(block.getType());
-                    Ageable ageable = (Ageable) block.getBlockData();
-                    ageable.setAge(0);
-                    block.setBlockData(ageable);
-                    event.getPlayer().getInventory().removeItem(new ItemStack(seedMaterial));
-                }
-                break;
-            case COCOA:
-                Directional directional = (Directional) block.getBlockData();
-                BlockFace facing = directional.getFacing();
-                if (facing != BlockFace.DOWN) {
-                    Material cocoaSeed = Material.COCOA_BEANS;
-                    if (event.getPlayer().getInventory().contains(cocoaSeed)) {
-                        event.setCancelled(true);
-                        block.getWorld().dropItem(block.getLocation(), new ItemStack(cocoaSeed));
-                        block.setType(Material.COCOA);
-                        Directional newDirectional = (Directional) block.getBlockData();
-                        newDirectional.setFacing(facing);
-                        block.setBlockData(newDirectional);
-                        event.getPlayer().getInventory().removeItem(new ItemStack(cocoaSeed));
-                    }
-                }
-                break;
-            default:
-                break;
+        if (!isFullyGrown(block, crop)) return;
+
+        Player player = event.getPlayer();
+        Location location = block.getLocation();
+        Material seedType = crop.getSeedType();
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                replantCrop(player, location, crop, seedType);
+            }
+        }.runTaskLater(this, 2L);
+    }
+
+    private boolean isFullyGrown(Block block, Crop crop) {
+        if (block.getBlockData() instanceof Ageable) {
+            Ageable ageable = (Ageable) block.getBlockData();
+            return ageable.getAge() == ageable.getMaximumAge();
+        } else if (crop == Crop.COCOA) {
+            Cocoa cocoa = (Cocoa) block.getBlockData();
+            return cocoa.getAge() == cocoa.getMaximumAge();
+        }
+        return false;
+    }
+
+    private void replantCrop(Player player, Location loc, Crop crop, Material seedType) {
+        Block block = loc.getBlock();
+        if (block.getType() != Material.AIR) return;
+
+        if (!player.getInventory().containsAtLeast(new ItemStack(seedType), 1)) return;
+
+        player.getInventory().removeItem(new ItemStack(seedType, 1));
+
+        block.setType(crop.getCropType());
+        if (crop == Crop.COCOA) {
+            BlockFace facing = getOriginalFacing(loc);
+            Block stem = block.getRelative(facing.getOppositeFace());
+            if (stem.getType() != Material.JUNGLE_LOG) return;
+
+            Directional cocoaData = (Directional) block.getBlockData();
+            cocoaData.setFacing(facing);
+            block.setBlockData(cocoaData);
+        } else {
+            Ageable ageable = (Ageable) block.getBlockData();
+            ageable.setAge(0);
+            block.setBlockData(ageable);
         }
     }
 
-    private Material materialToSeed(Material crop) {
-        switch (crop) {
-            case WHEAT:
-                return Material.WHEAT_SEEDS;
-            case POTATOES:
-                return Material.POTATO;
-            case CARROTS:
-                return Material.CARROT;
-            case NETHER_WART:
-                return Material.NETHER_WART;
-            default:
-                return null;
+    private BlockFace getOriginalFacing(Location loc) {
+        return BlockFace.NORTH;
+    }
+
+    private enum Crop {
+        WHEAT(Material.WHEAT, Material.WHEAT_SEEDS),
+        CARROTS(Material.CARROTS, Material.CARROT),
+        POTATOES(Material.POTATOES, Material.POTATO),
+        NETHER_WART(Material.NETHER_WART, Material.NETHER_WART),
+        COCOA(Material.COCOA, Material.COCOA_BEANS);
+
+        private final Material cropType;
+        private final Material seedType;
+
+        Crop(Material cropType, Material seedType) {
+            this.cropType = cropType;
+            this.seedType = seedType;
+        }
+
+        public Material getCropType() {
+            return cropType;
+        }
+
+        public Material getSeedType() {
+            return seedType;
+        }
+
+        public static Crop fromMaterial(Material material) {
+            for (Crop crop : values()) {
+                if (crop.cropType == material) {
+                    return crop;
+                }
+            }
+            return null;
         }
     }
 }
