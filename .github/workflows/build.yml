@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - VermeilChan-patch-1
-    paths:
-      - '.github/workflows/build.yml'
 
 jobs:
   build:
