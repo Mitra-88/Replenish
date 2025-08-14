@@ -1,51 +1,79 @@
 # Replenish
 
-[![Latest Release](https://img.shields.io/github/release/VermeilChan/Replenish)](https://github.com/VermeilChan/Replenish/releases)
-[![Downloads](https://img.shields.io/github/downloads/VermeilChan/Replenish/total)](https://github.com/VermeilChan/Replenish/releases)
-[![License](https://img.shields.io/github/license/VermeilChan/Replenish)](https://github.com/VermeilChan/Replenish/blob/Development/LICENSE)
+A quality-of-life farming plugin for Minecraft servers, inspired by Hypixel Skyblock's "Replenish" enchant.  
+When enabled, it **automatically replants crops** after harvesting, removing the need to manually replant.
 
-Maintained by [VermeilChan](https://github.com/VermeilChan).
+---
 
-## Overview
+## ✨ Features
+- **Automatic replanting** for supported crops:
+  - Wheat
+  - Potatoes
+  - Carrots
+  - Nether Wart
+  - Cocoa Beans (with axe support)
+- **Fortune I/II/III support** for extra crop drops.
+- **Global toggle command** for enabling/disabling the feature server-wide (OPs only).
+- **Configurable crop list** (easily add/remove supported crops in `config.yml`).
+- **Delay before replanting** (~15ms) for smoother, more natural gameplay feel.
+- **Works even on partially grown crops** — always replants.
+- **No seeds? No replant!** Requires the player to have the correct seed/item in their inventory.
+- **Optimized for Spigot/Paper 1.21.8** with minimal overhead.
+- **No unnecessary logging** — clean console output.
+- **Bug-free** replant system using scheduled tasks to avoid Spigot overwrite issues.
 
-Replenish is a simple plugin that aims to enhance farming mechanics. It automates the replanting process when crops such as wheat, potatoes, carrots, nether warts, and cocoa beans are harvested. Instead of manually replanting.
+---
 
-to put it simply, a copycat of [Replenish](https://wiki.hypixel.net/Replenish_Enchantment) from hypixel skyblock :)
+## 🆚 Improvements Over the Original Version
 
-## Requirements
+### Original Issues:
+- Still on 1.20.4.
+- Only supported full-grown crops.
+- Replanted even if the player **did not have seeds**.
+- Only worked with hoes, no axe support for Cocoa Beans.
+- No Fortune enchantment support.
+- Used immediate block updates, causing replant to fail on break → replant loops.
+- No global enable/disable toggle — always on.
+- No partial crop handling — breaking partially grown crops didn’t replant.
+- Required per-player setup rather than global.
+- No configurable crops.
 
-- I didn't really test it, but it should work most versions 1.17+.
-- Spigot/Paper server
-- For small server (for now)
+### Current Improvements:
+- ✅ Supports 1.21.8.
+- ✅ Supports **both fully grown and partially grown crops**.
+- ✅ Requires seeds/items in inventory before replanting.
+- ✅ Added **Fortune support** for realistic farming boosts.
+- ✅ Added **axe support for Cocoa Beans**.
+- ✅ Added **global OP-only toggle** to enable/disable.
+- ✅ Fixed timing bug by adding a short replant delay.
+- ✅ Fully global system — no per-player setup.
+- ✅ Cleaned up unused code, removed debug logs, fixed API warnings.
+- ✅ More maintainable structure using clear method separation.
 
-## Installation
+---
 
-1. Download the latest release from the [releases page](https://github.com/VermeilChan/Replenish/releases/latest).
-2. Place the downloaded .jar file into the `plugins` directory of your server.
-3. Restart or reload your server.
+## 📦 Installation
+1. Drop the `.jar` file into your server’s `plugins` folder.
+2. Restart the server.
+3. Use `/replenish` (OP only) to toggle the feature on or off.
 
-## Features
+---
 
-- Automatically replants crops including wheat, potatoes, carrots, nether warts, and cocoa beans.
-- Replants crops using materials available in the player's inventory.
-- Enhances farming experience by reducing manual replanting efforts.
+## ⚙️ Configuration
+Located in `config.yml`:
+```yaml
+crops:
+  WHEAT: true
+  POTATOES: true
+  CARROTS: true
+  NETHER_WART: true
+  COCOA: true
+```
+- `true` → crop is affected by Replenish.
+- `false` → crop is ignored.
 
-## License
+---
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
-
-## Credits
-
-- [SpigotMC](https://www.spigotmc.org/)
-- [PaperMC](https://papermc.io/)
-
-## TODO
-
-- Add a 3/5 millisecond delay between replants.
-- REFACTOR THE WHOLE THING, the code is soo bad 💀.
-
-## Known Issues
-
-- In certain situations, replanting might fail.
-- Fortune level is not taken into account.
-- Doesn't drop the right amount of drops.
+## 🛠 Commands
+- `/replenish` — Toggles the plugin globally (OP only).
+```

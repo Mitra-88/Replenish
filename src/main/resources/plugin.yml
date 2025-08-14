@@ -1,8 +1,16 @@
 name: Replenish
-version: '${project.version}'
-main: me.vermeil.replenish.Replenish
-api-version: '1.13'
-load: STARTUP
-authors: [VermeilChan]
-description: Recreation of the Replenish enchantment from Hypixel Skyblock.
-website: https://github.com/VermeilChan/Replenish
+version: 1.3.0
+main: dev.replenish.ReplenishPlugin
+api-version: '1.21'
+author: Mitra
+commands:
+  replenish:
+    description: Manage Replenish plugin (toggle/reload)
+    usage: /replenish <toggle|reload>
+permissions:
+  replenish.toggle:
+    description: Toggle plugin globally
+    default: op
+  replenish.reload:
+    description: Reload config
+    default: op

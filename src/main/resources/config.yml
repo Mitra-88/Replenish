@@ -1,0 +1,26 @@
+# Global enable/disable (toggle with /replenish toggle)
+enabled: true
+
+# QoL: if true, any hoe/axe will trigger Replenish (no per-item tagging).
+qolMode: true
+
+# Always replant (user requested). Replant still requires the player to have an appropriate seed in inventory.
+replantWhenNotMature: true
+
+# Replant delay in milliseconds; converted to ticks (min 1 tick).
+replantDelayMs: 15
+
+# If true, replant only when at least one "seed-equivalent" was available in player's inventory.
+requirePlayerSeed: true
+
+# If true, only hoes and axes trigger Replenish when in QoL mode.
+restrictToHoesAndAxes: true
+
+# Per-crop toggles
+crops:
+  wheat: true
+  carrots: true
+  potatoes: true
+  beetroots: true
+  nether_wart: true
+  cocoa: true
