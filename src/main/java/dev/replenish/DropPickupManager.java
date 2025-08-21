@@ -11,23 +11,18 @@ import java.util.Collection;
 import java.util.Map;
 
 public final class DropPickupManager {
-
     private DropPickupManager() {}
 
-    /**
-     * Insert all drops into player's inventory; leftovers are dropped at dropLoc.
-     * Plays a quiet pickup sound if anything was added.
-     */
     public static void giveToPlayerOrDrop(Player player, Location dropLoc, Collection<ItemStack> drops) {
         if (player == null || drops == null || drops.isEmpty()) return;
 
-        PlayerInventory inv = player.getInventory();
-        World world = dropLoc.getWorld();
+        final PlayerInventory inv = player.getInventory();
+        final World world = dropLoc.getWorld();
         boolean anyAdded = false;
 
         for (ItemStack stack : drops) {
             if (stack == null || stack.getAmount() <= 0) continue;
-            Map<Integer, ItemStack> leftovers = inv.addItem(stack);
+            final Map<Integer, ItemStack> leftovers = inv.addItem(stack);
             if (leftovers.isEmpty()) {
                 anyAdded = true;
             } else if (world != null) {
@@ -38,8 +33,8 @@ public final class DropPickupManager {
             }
         }
 
-        if (anyAdded && world != null) {
-            world.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
+        if (anyAdded) {
+            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
         }
     }
 }

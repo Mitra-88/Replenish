@@ -29,7 +29,6 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 boolean now = !plugin.isEnabledGlobally();
                 plugin.getConfig().set("enabled", now);
                 plugin.saveConfig();
-                // refresh cache for consistency if toggled via command
                 plugin.reloadLocalConfig();
                 sender.sendMessage(ChatColor.YELLOW + "[Replenish] Global enabled is now " + now);
                 return true;
@@ -57,6 +56,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.YELLOW + "Direct pickup: " + ChatColor.WHITE + cfg.directPickup);
                 sender.sendMessage(ChatColor.YELLOW + "Allow immature drops: " + ChatColor.WHITE + cfg.allowImmatureDrops);
                 sender.sendMessage(ChatColor.YELLOW + "Replant delay (ticks): " + ChatColor.WHITE + cfg.replantDelayTicks);
+                sender.sendMessage(ChatColor.YELLOW + "Max replants/tick: " + ChatColor.WHITE + cfg.maxReplantsPerTick);
                 sender.sendMessage(ChatColor.YELLOW + "Crops: "
                         + ChatColor.WHITE + "wheat=" + plugin.isCropEnabled(Material.WHEAT)
                         + ", carrots=" + plugin.isCropEnabled(Material.CARROTS)

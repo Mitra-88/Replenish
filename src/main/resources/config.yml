@@ -1,22 +1,15 @@
-# =====================================================
-# Replenish Plugin Configuration
-# =====================================================
-
 enabled: true
 qolMode: true
 requirePlayerSeed: true
 restrictToHoesAndAxes: true
+directPickup: true
+allowImmatureDrops: false
 
-# Before/after delay for replant (ms). Derived 'replantDelayTicks' is written on load.
+# ~15ms default → 1 tick
 replantDelayMs: 15
 
-# Send drops directly to player inventory (leftovers drop on ground).
-directPickup: true
-
-# Prevent “items from nowhere”:
-# If false (default), breaking immature crops yields NO drops (but replant happens at same age).
-# If true, immature crops can drop like vanilla (not recommended).
-allowImmatureDrops: false
+# cap per-tick replant work; raise if you have headroom
+maxReplantsPerTick: 4096
 
 crops:
   wheat: true

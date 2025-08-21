@@ -11,13 +11,17 @@ import java.util.Objects;
 public class ReplenishPlugin extends JavaPlugin {
 
     private volatile ConfigCache cache = new ConfigCache(); // hot-path cache
+    private ReplantQueue replantQueue;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         reloadLocalConfig();
 
-        getServer().getPluginManager().registerEvents(new ReplenishListener(this), this);
+        replantQueue = new ReplantQueue(this, cache.maxReplantsPerTick);
+        replantQueue.start();
+
+        getServer().getPluginManager().registerEvents(new ReplenishListener(this, replantQueue), this);
 
         ReplenishCommand cmd = new ReplenishCommand(this);
         if (getCommand("replenish") != null) {
@@ -28,33 +32,36 @@ public class ReplenishPlugin extends JavaPlugin {
         getLogger().info("[Replenish] Enabled. global enabled=" + isEnabledGlobally());
     }
 
+    @Override
+    public void onDisable() {
+        if (replantQueue != null) replantQueue.stop();
+    }
+
     public void reloadLocalConfig() {
         reloadConfig();
         FileConfiguration c = getConfig();
 
-        // derive tick delay from ms (1 tick = 50ms)
         int ms = Math.max(0, c.getInt("replantDelayMs", 15));
         int replantDelayTicks = Math.max(1, Math.round(ms / 50f));
-        c.set("replantDelayTicks", replantDelayTicks); // persisted for visibility
-        saveConfig();
+        c.set("replantDelayTicks", replantDelayTicks);
 
-        // refresh hot-path cache
+        int maxPerTick = Math.max(256, c.getInt("maxReplantsPerTick", 2048));
+        c.set("maxReplantsPerTick", maxPerTick);
+
+        saveConfig();
         this.cache = ConfigCache.from(c);
+
+        if (replantQueue != null) {
+            replantQueue.stop();
+            replantQueue = new ReplantQueue(this, cache.maxReplantsPerTick);
+            replantQueue.start();
+        }
     }
 
-    // -------- Cached getters (used by listener/commands) --------
-    public int getReplantDelayTicks() { return cache.replantDelayTicks; }
     public boolean isEnabledGlobally() { return cache.enabled; }
-    public boolean isQolMode() { return cache.qolMode; }
-    public boolean isRequirePlayerSeed() { return cache.requirePlayerSeed; }
-    public boolean isRestrictToHoesAndAxes() { return cache.restrictToHoesAndAxes; }
-    public boolean isDirectPickup() { return cache.directPickup; }
-    public boolean isAllowImmatureDrops() { return cache.allowImmatureDrops; }
     public boolean isCropEnabled(Material crop) { return cache.cropEnabled.getOrDefault(crop, true); }
-
     public ConfigCache cfg() { return cache; }
 
-    // -------- Cache container --------
     public static final class ConfigCache {
         final boolean enabled;
         final boolean qolMode;
@@ -63,6 +70,7 @@ public class ReplenishPlugin extends JavaPlugin {
         final boolean directPickup;
         final boolean allowImmatureDrops;
         final int replantDelayTicks;
+        final int maxReplantsPerTick;
         final Map<Material, Boolean> cropEnabled;
 
         private ConfigCache() {
@@ -73,6 +81,7 @@ public class ReplenishPlugin extends JavaPlugin {
             this.directPickup = true;
             this.allowImmatureDrops = false;
             this.replantDelayTicks = 1;
+            this.maxReplantsPerTick = 2048;
             this.cropEnabled = defaultCrops();
         }
 
@@ -84,13 +93,14 @@ public class ReplenishPlugin extends JavaPlugin {
                     c.getBoolean("restrictToHoesAndAxes", true),
                     c.getBoolean("directPickup", true),
                     c.getBoolean("allowImmatureDrops", false),
-                    c.getInt("replantDelayTicks", 1),
+                    Math.max(1, c.getInt("replantDelayTicks", 1)),
+                    Math.max(256, c.getInt("maxReplantsPerTick", 2048)),
                     readCrops(c)
             );
         }
 
         private ConfigCache(boolean enabled, boolean qolMode, boolean requirePlayerSeed, boolean restrictToHoesAndAxes,
-                            boolean directPickup, boolean allowImmatureDrops, int replantDelayTicks,
+                            boolean directPickup, boolean allowImmatureDrops, int replantDelayTicks, int maxReplantsPerTick,
                             Map<Material, Boolean> cropEnabled) {
             this.enabled = enabled;
             this.qolMode = qolMode;
@@ -98,7 +108,8 @@ public class ReplenishPlugin extends JavaPlugin {
             this.restrictToHoesAndAxes = restrictToHoesAndAxes;
             this.directPickup = directPickup;
             this.allowImmatureDrops = allowImmatureDrops;
-            this.replantDelayTicks = Math.max(1, replantDelayTicks);
+            this.replantDelayTicks = replantDelayTicks;
+            this.maxReplantsPerTick = maxReplantsPerTick;
             this.cropEnabled = cropEnabled;
         }
 
