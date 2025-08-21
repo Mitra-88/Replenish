@@ -1,6 +1,6 @@
 name: Replenish
 main: dev.replenish.ReplenishPlugin
-version: 1.4.0
+version: 2.0.0
 api-version: "1.21"
 description: "Auto-replants crops (Hypixel-style), with configurable seeds, tools, and per-crop toggles."
 authors: [ "Mitra-88" ]
@@ -8,13 +8,12 @@ authors: [ "Mitra-88" ]
 commands:
   replenish:
     description: "Replenish admin / maintenance commands"
-    usage: "/<command> <toggle|reload>"
+    usage: "/<command> <toggle|reload|status>"
     aliases: [ "repl" ]
     permission: replenish.use
     permission-message: "&cYou do not have permission to use this command."
 
 permissions:
-  # Convenience wildcard
   replenish.*:
     description: "Access to all Replenish permissions."
     default: op
@@ -22,18 +21,20 @@ permissions:
       replenish.use: true
       replenish.toggle: true
       replenish.reload: true
+      replenish.status: true
 
-  # Base command access (/replenish shows help; subcommands still check their own perms)
   replenish.use:
     description: "Allows using /replenish base command."
     default: op
 
-  # /replenish toggle — flips the global enabled state
   replenish.toggle:
     description: "Allows toggling Replenish on/off globally."
     default: op
 
-  # /replenish reload — reloads config.yml
   replenish.reload:
     description: "Allows reloading Replenish configuration."
+    default: op
+
+  replenish.status:
+    description: "Allows viewing Replenish runtime status."
     default: op
