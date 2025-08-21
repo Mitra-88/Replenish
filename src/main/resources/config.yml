@@ -1,22 +1,43 @@
-# Global enable/disable (toggle with /replenish toggle)
+# =====================================================
+# Replenish Plugin Configuration
+# =====================================================
+# This file controls the behavior of the Replenish plugin.
+# Values here are read on plugin startup and can be reloaded
+# with /replenish reload
+#
+# true/false = boolean
+# number = integer (ms, ticks)
+# =====================================================
+
+# Master switch. If disabled, Replenish does nothing.
 enabled: true
 
-# QoL: if true, any hoe/axe will trigger Replenish (no per-item tagging).
+# QoL mode:
+# If true, players can break crops normally and auto-replant applies.
+# If false, only explicit interactions might be considered (future use).
 qolMode: true
 
-# Always replant (user requested). Replant still requires the player to have an appropriate seed in inventory.
-replantWhenNotMature: true
-
-# Replant delay in milliseconds; converted to ticks (min 1 tick).
-replantDelayMs: 15
-
-# If true, replant only when at least one "seed-equivalent" was available in player's inventory.
+# Require the player to actually have the seed item in their inventory
+# (Wheat Seeds, Carrot, Potato, Beetroot Seeds, Nether Wart, Cocoa Beans).
+# If true, one seed will be consumed per replant.
+# If false, no seeds are required — replant is "free".
 requirePlayerSeed: true
 
-# If true, only hoes and axes trigger Replenish when in QoL mode.
+# Restrict auto-replanting to only when the player is holding a Hoe or Axe.
+# If false, any tool or bare hand will work.
 restrictToHoesAndAxes: true
 
-# Per-crop toggles
+# Delay (in milliseconds) before the crop is replanted.
+# Default: 15 ms (~1 tick).
+# NOTE: This value is automatically converted into "replantDelayTicks"
+# which is the actual in-game scheduling delay.
+replantDelayMs: 15
+
+# =====================================================
+# Crop-specific toggles
+# If true, the crop type is eligible for auto-replant.
+# If false, the crop type behaves like vanilla Minecraft.
+# =====================================================
 crops:
   wheat: true
   carrots: true

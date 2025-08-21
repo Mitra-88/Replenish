@@ -38,7 +38,6 @@ public class ReplenishPlugin extends JavaPlugin {
     public boolean isRequirePlayerSeed() { return getConfig().getBoolean("requirePlayerSeed", true); }
     public boolean isRestrictToHoesAndAxes() { return getConfig().getBoolean("restrictToHoesAndAxes", true); }
 
-    // Replaced the older String-based method to avoid inverted-call anti-patterns.
     public boolean isCropEnabled(Material crop) {
         return switch (crop) {
             case WHEAT -> getConfig().getBoolean("crops.wheat", true);
