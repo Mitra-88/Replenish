@@ -26,36 +26,39 @@ public class ReplenishListener implements Listener {
             Material.NETHER_WART, Material.COCOA
     );
 
-    private static final BlockFace[] HORIZ = new BlockFace[]{
+    private static final BlockFace[] HORIZ = {
             BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
     };
 
-    public ReplenishListener(ReplenishPlugin plugin) {
-        this.plugin = plugin;
-    }
+    // Faster than string endsWith checks
+    private static final EnumSet<Material> ALLOWED_TOOLS = EnumSet.of(
+            Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE,
+            Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
+    );
+
+    public ReplenishListener(ReplenishPlugin plugin) { this.plugin = plugin; }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent e) {
-        if (!plugin.isEnabledGlobally()) return;
+        final var cfg = plugin.cfg();
+        if (!cfg.enabled) return;
 
-        Block block = e.getBlock();
-        Player p = e.getPlayer();
+        final Block block = e.getBlock();
+        final Player p = e.getPlayer();
 
-        // Creative players shouldn't have inventory altered or drops spawned
         if (p.getGameMode() == GameMode.CREATIVE) return;
 
-        Material cropType = block.getType();
+        final Material cropType = block.getType();
         if (!SUPPORTED.contains(cropType)) return;
         if (!plugin.isCropEnabled(cropType)) return;
 
-        // Tool restriction (QoL)
-        ItemStack tool = p.getInventory().getItemInMainHand();
-        if (plugin.isQolMode() && plugin.isRestrictToHoesAndAxes() && !isHoeOrAxe(tool)) return;
+        final ItemStack tool = p.getInventory().getItemInMainHand();
+        final boolean restrictTools = cfg.qolMode && cfg.restrictToHoesAndAxes;
+        if (restrictTools && !ALLOWED_TOOLS.contains(tool.getType())) return;
 
-        // Capture age data before any mutations
-        int originalAge = 0;
-        int maxAge = 0;
-        BlockData preData = block.getBlockData();
+        // Capture pre-break data once
+        final BlockData preData = block.getBlockData();
+        int originalAge = 0, maxAge = 0;
         if (preData instanceof Ageable a) {
             originalAge = a.getAge();
             maxAge = a.getMaximumAge();
@@ -63,107 +66,96 @@ public class ReplenishListener implements Listener {
         final boolean wasMature = (maxAge > 0) && (originalAge >= maxAge);
         final int replantedAge = wasMature ? 0 : originalAge;
 
-        // Preflight environment checks BEFORE consuming seeds
+        // Preflight checks BEFORE seed consumption
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
-        } else if (cropType == Material.NETHER_WART) {
-            if (block.getRelative(BlockFace.DOWN).getType() != Material.SOUL_SAND) return;
         } else {
-            if (block.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) return;
+            Block under = block.getRelative(BlockFace.DOWN);
+            if (cropType == Material.NETHER_WART) {
+                if (under.getType() != Material.SOUL_SAND) return;
+            } else if (under.getType() != Material.FARMLAND) {
+                return;
+            }
         }
 
-        // Seed logic: only require/consume seed when the crop was mature
-        Material seedMat = seedFor(cropType);
-        if (wasMature && plugin.isRequirePlayerSeed()) {
+        // Seed logic: only consume when mature
+        final Material seedMat = seedFor(cropType);
+        if (wasMature && cfg.requirePlayerSeed) {
             if (seedMat == null) return;
             if (!playerHasSeed(p, seedMat)) return;
             if (!consumeOneFromPlayer(p, seedMat)) return;
         }
 
-        // Use Bukkit's drop calc to respect Fortune/Silk Touch
+        // Drops: respect Fortune/SilkTouch; skip calc for immature if disabled
         e.setDropItems(false);
-        List<ItemStack> drops = new ArrayList<>(block.getDrops(tool, p));
-
-        // Prevent dupes/exploits: suppress drops for immature crops unless explicitly allowed
-        if (!wasMature && !plugin.isAllowImmatureDrops()) {
-            drops.clear();
+        final boolean allowImmatureDrops = cfg.allowImmatureDrops;
+        final Collection<ItemStack> drops;
+        if (wasMature || allowImmatureDrops) {
+            drops = block.getDrops(tool, p); // no copy; collection view is fine
+        } else {
+            drops = List.of(); // zero-alloc empty
         }
 
-        // Capture cocoa orientation hints BEFORE we set AIR
+        // Cocoa facing hints
         final BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d)
-                ? d.getFacing()
-                : null;
+                ? d.getFacing() : null;
         final BlockFace playerFacingAtBreak = p.getFacing();
 
-        // Clear the block and dispatch drops
+        // Set to air and dispatch drops
         block.setType(Material.AIR, false);
-        Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
-        if (plugin.isDirectPickup()) {
+        final Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
+        if (cfg.directPickup) {
             DropPickupManager.giveToPlayerOrDrop(p, dropLoc, drops);
         } else {
             dropAll(block, drops);
         }
 
-        final Block bRef = block;
-        final Material mRef = cropType;
-        final int delay = plugin.getReplantDelayTicks();
+        final int delay = Math.max(1, cfg.replantDelayTicks);
+        final int targetAge = replantedAge;
 
-        // Delayed replant to mimic vanilla timings & avoid physics race conditions
+        // Sync delayed replant (world ops must be on main thread)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             try {
-                if (!bRef.getType().isAir()) return;
+                if (!block.getType().isAir()) return;
 
-                if (mRef == Material.COCOA) {
-                    // Choose facing: original -> player -> any
+                if (cropType == Material.COCOA) {
                     BlockFace chosen = null;
-                    if (originalCocoaFacing != null && isJungle(bRef.getRelative(originalCocoaFacing).getType())) {
+                    if (originalCocoaFacing != null && isJungle(block.getRelative(originalCocoaFacing).getType())) {
                         chosen = originalCocoaFacing;
                     }
-                    if (chosen == null && isJungle(bRef.getRelative(playerFacingAtBreak).getType())) {
+                    if (chosen == null && isJungle(block.getRelative(playerFacingAtBreak).getType())) {
                         chosen = playerFacingAtBreak;
                     }
-                    if (chosen == null) {
-                        chosen = findAdjacentJungle(bRef);
-                    }
+                    if (chosen == null) chosen = findAdjacentJungle(block);
                     if (chosen == null) return;
 
-                    bRef.setType(Material.COCOA, false);
-                    BlockData data = bRef.getBlockData();
-                    if (data instanceof Directional d) {
-                        // If your server build flips this, change to chosen.getOppositeFace()
-                        d.setFacing(chosen);
-                    }
+                    block.setType(Material.COCOA, false);
+                    BlockData data = block.getBlockData();
+                    if (data instanceof Directional d) d.setFacing(chosen); // flip to opposite if your server needs it
                     if (data instanceof Ageable a) {
-                        a.setAge(Math.max(0, Math.min(replantedAge, a.getMaximumAge())));
-                        bRef.setBlockData(a, false);
+                        a.setAge(Math.max(0, Math.min(targetAge, a.getMaximumAge())));
+                        block.setBlockData(a, false);
                     } else {
-                        bRef.setBlockData(data, false);
+                        block.setBlockData(data, false);
                     }
                     return;
                 }
 
-                if (mRef == Material.NETHER_WART) {
-                    if (bRef.getRelative(BlockFace.DOWN).getType() != Material.SOUL_SAND) return;
-                    bRef.setType(Material.NETHER_WART, false);
-                    BlockData data = bRef.getBlockData();
-                    if (data instanceof Ageable a) {
-                        a.setAge(Math.max(0, Math.min(replantedAge, a.getMaximumAge())));
-                        bRef.setBlockData(a, false);
-                    } else {
-                        bRef.setBlockData(data, false);
-                    }
-                    return;
-                }
-
-                if (bRef.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) return;
-
-                bRef.setType(mRef, false);
-                BlockData data = bRef.getBlockData();
-                if (data instanceof Ageable a) {
-                    a.setAge(Math.max(0, Math.min(replantedAge, a.getMaximumAge())));
-                    bRef.setBlockData(a, false);
+                Block under = block.getRelative(BlockFace.DOWN);
+                if (cropType == Material.NETHER_WART) {
+                    if (under.getType() != Material.SOUL_SAND) return;
+                    block.setType(Material.NETHER_WART, false);
                 } else {
-                    bRef.setBlockData(data, false);
+                    if (under.getType() != Material.FARMLAND) return;
+                    block.setType(cropType, false);
+                }
+
+                BlockData data = block.getBlockData();
+                if (data instanceof Ageable a) {
+                    a.setAge(Math.max(0, Math.min(targetAge, a.getMaximumAge())));
+                    block.setBlockData(a, false);
+                } else {
+                    block.setBlockData(data, false);
                 }
 
             } catch (Throwable t) {
@@ -174,9 +166,7 @@ public class ReplenishListener implements Listener {
 
     private BlockFace findAdjacentJungle(Block b) {
         for (BlockFace face : HORIZ) {
-            Block neighbor = b.getRelative(face);
-            Material t = neighbor.getType();
-            if (isJungle(t)) return face;
+            if (isJungle(b.getRelative(face).getType())) return face;
         }
         return null;
     }
@@ -201,7 +191,7 @@ public class ReplenishListener implements Listener {
                     is.setAmount(is.getAmount() - 1);
                     inv.setItem(i, is);
                 } else {
-                    inv.setItem(i, new ItemStack(Material.AIR));
+                    inv.clear(i); // faster than setItem(AIR)
                 }
                 return true;
             }
@@ -212,18 +202,11 @@ public class ReplenishListener implements Listener {
                 off.setAmount(off.getAmount() - 1);
                 inv.setItemInOffHand(off);
             } else {
-                inv.setItemInOffHand(new ItemStack(Material.AIR));
+                inv.setItemInOffHand(null); // null == AIR; avoids new ItemStack
             }
             return true;
         }
         return false;
-    }
-
-    private boolean isHoeOrAxe(ItemStack tool) {
-        if (tool == null) return false;
-        Material mt = tool.getType();
-        String n = mt.name();
-        return n.endsWith("_HOE") || n.endsWith("_AXE");
     }
 
     private boolean isJungle(Material m) {
@@ -244,7 +227,8 @@ public class ReplenishListener implements Listener {
         };
     }
 
-    private void dropAll(Block block, List<ItemStack> drops) {
+    private void dropAll(Block block, Collection<ItemStack> drops) {
+        if (drops == null || drops.isEmpty()) return;
         Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
         for (ItemStack d : drops) {
             if (d == null || d.getAmount() <= 0) continue;

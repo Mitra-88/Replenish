@@ -7,7 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 
 public final class DropPickupManager {
@@ -18,8 +18,8 @@ public final class DropPickupManager {
      * Insert all drops into player's inventory; leftovers are dropped at dropLoc.
      * Plays a quiet pickup sound if anything was added.
      */
-    public static void giveToPlayerOrDrop(Player player, Location dropLoc, List<ItemStack> drops) {
-        if (player == null || dropLoc == null || drops == null || drops.isEmpty()) return;
+    public static void giveToPlayerOrDrop(Player player, Location dropLoc, Collection<ItemStack> drops) {
+        if (player == null || drops == null || drops.isEmpty()) return;
 
         PlayerInventory inv = player.getInventory();
         World world = dropLoc.getWorld();
@@ -30,9 +30,7 @@ public final class DropPickupManager {
             Map<Integer, ItemStack> leftovers = inv.addItem(stack);
             if (leftovers.isEmpty()) {
                 anyAdded = true;
-                continue;
-            }
-            if (world != null) {
+            } else if (world != null) {
                 for (ItemStack leftover : leftovers.values()) {
                     if (leftover == null || leftover.getAmount() <= 0) continue;
                     world.dropItemNaturally(dropLoc, leftover);
