@@ -1,43 +1,23 @@
 # =====================================================
 # Replenish Plugin Configuration
 # =====================================================
-# This file controls the behavior of the Replenish plugin.
-# Values here are read on plugin startup and can be reloaded
-# with /replenish reload
-#
-# true/false = boolean
-# number = integer (ms, ticks)
-# =====================================================
 
-# Master switch. If disabled, Replenish does nothing.
 enabled: true
-
-# QoL mode:
-# If true, players can break crops normally and auto-replant applies.
-# If false, only explicit interactions might be considered (future use).
 qolMode: true
-
-# Require the player to actually have the seed item in their inventory
-# (Wheat Seeds, Carrot, Potato, Beetroot Seeds, Nether Wart, Cocoa Beans).
-# If true, one seed will be consumed per replant.
-# If false, no seeds are required — replant is "free".
 requirePlayerSeed: true
-
-# Restrict auto-replanting to only when the player is holding a Hoe or Axe.
-# If false, any tool or bare hand will work.
 restrictToHoesAndAxes: true
 
-# Delay (in milliseconds) before the crop is replanted.
-# Default: 15 ms (~1 tick).
-# NOTE: This value is automatically converted into "replantDelayTicks"
-# which is the actual in-game scheduling delay.
+# Before/after delay for replant (ms). Derived 'replantDelayTicks' is written on load.
 replantDelayMs: 15
 
-# =====================================================
-# Crop-specific toggles
-# If true, the crop type is eligible for auto-replant.
-# If false, the crop type behaves like vanilla Minecraft.
-# =====================================================
+# Send drops directly to player inventory (leftovers drop on ground).
+directPickup: true
+
+# Prevent “items from nowhere”:
+# If false (default), breaking immature crops yields NO drops (but replant happens at same age).
+# If true, immature crops can drop like vanilla (not recommended).
+allowImmatureDrops: false
+
 crops:
   wheat: true
   carrots: true
