@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/build.yml'
 
 jobs:
   build:
@@ -27,5 +25,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Replenish
+          name: Replenish-Nightly
           path: target/*.jar
