@@ -1,15 +1,15 @@
 name: Replenish
 main: dev.replenish.ReplenishPlugin
-version: 3.0.0
+version: 3.1.0
 api-version: "1.21"
 description: "Auto-replants crops with age preservation, Fortune-respecting drops, and direct pickup."
 authors: [ "Mitra-88" ]
+softdepend: [AuraSkills]
 
 commands:
   replenish:
-    description: "Replenish admin / maintenance commands"
-    usage: "/<command> <toggle|reload|status>"
-    aliases: [ "repl" ]
+    description: Replenish admin command
+    usage: /replenish <toggle|reload|status>
     permission: replenish.use
     permission-message: "&cYou do not have permission to use this command."
 
@@ -37,4 +37,4 @@ permissions:
 
   replenish.status:
     description: "Allows viewing current Replenish status."
-    default: op
+    default: true

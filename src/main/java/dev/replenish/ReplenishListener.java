@@ -1,6 +1,13 @@
 package dev.replenish;
 
-import org.bukkit.*;
+import dev.aurelium.auraskills.api.AuraSkillsApi;
+import dev.aurelium.auraskills.api.user.SkillsUser;
+import dev.aurelium.auraskills.api.skill.Skills;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
@@ -47,31 +54,31 @@ public class ReplenishListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent e) {
-        final ReplenishPlugin.ConfigCache cfg = plugin.cfg();
+        ReplenishPlugin.ConfigCache cfg = plugin.cfg();
         if (!cfg.enabled) return;
 
-        final Player p = e.getPlayer();
+        Player p = e.getPlayer();
         if (p.getGameMode() == GameMode.CREATIVE) return;
 
-        final Block block = e.getBlock();
-        final Material cropType = block.getType();
+        Block block = e.getBlock();
+        Material cropType = block.getType();
         if (!SUPPORTED.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
         if (cfg.qolMode && cfg.restrictToHoesAndAxes) {
-            final Material toolType = p.getInventory().getItemInMainHand().getType();
+            Material toolType = p.getInventory().getItemInMainHand().getType();
             if (!ALLOWED_TOOLS.contains(toolType)) return;
         }
 
-        final BlockData preData = block.getBlockData();
+        BlockData preData = block.getBlockData();
         int originalAge = 0, maxAge = 0;
         if (preData instanceof Ageable a) { originalAge = a.getAge(); maxAge = a.getMaximumAge(); }
-        final boolean wasMature = maxAge > 0 && originalAge >= maxAge;
-        final int replantedAge = wasMature ? 0 : originalAge;
+        boolean wasMature = maxAge > 0 && originalAge >= maxAge;
+        int replantedAge = wasMature ? 0 : originalAge;
 
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
         } else {
-            final Material underType = block.getRelative(BlockFace.DOWN).getType();
+            Material underType = block.getRelative(BlockFace.DOWN).getType();
             if (cropType == Material.NETHER_WART) {
                 if (underType != Material.SOUL_SAND) return;
             } else if (underType != Material.FARMLAND) {
@@ -79,29 +86,29 @@ public class ReplenishListener implements Listener {
             }
         }
 
-        final Material seedMat = seedFor(cropType);
+        Material seedMat = seedFor(cropType);
         if (wasMature && cfg.requirePlayerSeed) {
             if (seedMat == null) return;
             if (!consumeOneSeedIfAvailable(p, seedMat)) return;
         }
 
         e.setDropItems(false);
-        final ItemStack tool = p.getInventory().getItemInMainHand();
-        final Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops)
+        ItemStack tool = p.getInventory().getItemInMainHand();
+        Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops)
                 ? block.getDrops(tool, p)
                 : Collections.emptyList();
 
-        final BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d)
+        BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d)
                 ? d.getFacing() : null;
-        final BlockFace playerFacingAtBreak = p.getFacing();
+        BlockFace playerFacing = p.getFacing();
 
         block.setType(Material.AIR, false);
         if (!drops.isEmpty()) {
-            final Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
+            Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
             if (cfg.directPickup) {
                 DropPickupManager.giveToPlayerOrDrop(p, dropLoc, drops);
             } else {
-                final World w = block.getWorld();
+                World w = block.getWorld();
                 for (ItemStack d : drops) {
                     if (d == null || d.getAmount() <= 0) continue;
                     w.dropItemNaturally(dropLoc, d);
@@ -109,23 +116,44 @@ public class ReplenishListener implements Listener {
             }
         }
 
-        final int delay = Math.max(1, cfg.replantDelayTicks);
+        int delay = Math.max(1, cfg.replantDelayTicks);
         if (cropType == Material.COCOA) {
             BlockFace chosen;
             if (originalCocoaFacing != null && isJungle(block.getRelative(originalCocoaFacing).getType())) {
                 chosen = originalCocoaFacing;
-            } else if (isJungle(block.getRelative(playerFacingAtBreak).getType())) {
-                chosen = playerFacingAtBreak;
+            } else if (isJungle(block.getRelative(playerFacing).getType())) {
+                chosen = playerFacing;
             } else {
                 chosen = findAdjacentJungle(block);
             }
             if (chosen != null) {
                 queue.enqueue(block, Material.COCOA, delay, replantedAge, chosen);
             }
-            return;
+        } else {
+            queue.enqueue(block, cropType, delay, replantedAge, null);
         }
 
-        queue.enqueue(block, cropType, delay, replantedAge, null);
+        if (wasMature) {
+            giveFarmingXp(p, cropType);
+        }
+    }
+
+    private void giveFarmingXp(Player p, Material cropType) {
+        if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
+        SkillsUser user = AuraSkillsApi.get().getUser(p.getUniqueId());
+        if (user == null || !user.isLoaded()) return;
+        double xp;
+        switch (cropType) {
+            case WHEAT -> xp = 1.0;
+            case CARROTS, POTATOES -> xp = 0.75;
+            case BEETROOTS -> xp = 0.5;
+            case NETHER_WART -> xp = 1.2;
+            case COCOA -> xp = 0.6;
+            default -> xp = 0;
+        }
+        if (xp > 0) {
+            user.addSkillXp(Skills.FARMING, xp);
+        }
     }
 
     private BlockFace findAdjacentJungle(Block b) {
@@ -150,18 +178,18 @@ public class ReplenishListener implements Listener {
     }
 
     private boolean consumeOneSeedIfAvailable(Player p, Material seedMat) {
-        final PlayerInventory inv = p.getInventory();
+        PlayerInventory inv = p.getInventory();
         for (int i = 0, n = inv.getSize(); i < n; i++) {
-            final ItemStack is = inv.getItem(i);
+            ItemStack is = inv.getItem(i);
             if (is == null || is.getType() != seedMat || is.getAmount() <= 0) continue;
-            final int amt = is.getAmount();
+            int amt = is.getAmount();
             if (amt > 1) { is.setAmount(amt - 1); inv.setItem(i, is); }
             else { inv.clear(i); }
             return true;
         }
-        final ItemStack off = inv.getItemInOffHand();
+        ItemStack off = inv.getItemInOffHand();
         if (off.getType() == seedMat && off.getAmount() > 0) {
-            final int amt = off.getAmount();
+            int amt = off.getAmount();
             if (amt > 1) { off.setAmount(amt - 1); inv.setItemInOffHand(off); }
             else { inv.setItemInOffHand(null); }
             return true;

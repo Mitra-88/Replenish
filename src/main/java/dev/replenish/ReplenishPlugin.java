@@ -10,7 +10,7 @@ import java.util.Objects;
 
 public class ReplenishPlugin extends JavaPlugin {
 
-    private volatile ConfigCache cache = new ConfigCache(); // hot-path cache
+    private volatile ConfigCache cache = new ConfigCache();
     private ReplantQueue replantQueue;
 
     @Override
