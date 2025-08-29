@@ -35,7 +35,6 @@ import java.util.Set;
 public class ReplenishListener implements Listener {
 
     private final ReplenishPlugin plugin;
-    private final ReplantQueue queue;
     private final AgeMetaRegistry ages;
 
     private static final Set<Material> SUPPORTED = EnumSet.of(
@@ -47,8 +46,10 @@ public class ReplenishListener implements Listener {
             BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
     };
 
-    private static final EnumSet<Material> ALLOWED_TOOLS = EnumSet.of(
-            Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE,
+    private static final EnumSet<Material> HOES = EnumSet.of(
+            Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE
+    );
+    private static final EnumSet<Material> AXES = EnumSet.of(
             Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
     );
 
@@ -57,9 +58,8 @@ public class ReplenishListener implements Listener {
             Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD
     );
 
-    public ReplenishListener(ReplenishPlugin plugin, ReplantQueue queue, AgeMetaRegistry ages) {
+    public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ages) {
         this.plugin = plugin;
-        this.queue = queue;
         this.ages = ages;
     }
 
@@ -84,8 +84,13 @@ public class ReplenishListener implements Listener {
         if (!SUPPORTED.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
         if (cfg.restrictToHoesAndAxes) {
-            Material toolType = p.getInventory().getItemInMainHand().getType();
-            if (!ALLOWED_TOOLS.contains(toolType)) return;
+            Material tool = p.getInventory().getItemInMainHand().getType();
+            boolean ok = switch (cropType) {
+                case COCOA -> AXES.contains(tool);
+                case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOES.contains(tool);
+                default -> true;
+            };
+            if (!ok) return;
         }
 
         if (cropType == Material.COCOA) {
@@ -116,8 +121,8 @@ public class ReplenishListener implements Listener {
         }
 
         e.setDropItems(false);
-        var tool = p.getInventory().getItemInMainHand();
-        Collection<ItemStack> drops = wasMature ? block.getDrops(tool, p) : Collections.emptyList();
+        var toolInHand = p.getInventory().getItemInMainHand();
+        Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, p) : Collections.emptyList();
 
         BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d) ? d.getFacing() : null;
         BlockFace playerFacing = p.getFacing();
@@ -148,10 +153,10 @@ public class ReplenishListener implements Listener {
                 chosen = findAdjacentJungle(block);
             }
             if (chosen != null) {
-                queue.enqueue(block, Material.COCOA, delay, replantedAge, chosen);
+                plugin.enqueueReplant(block, Material.COCOA, delay, replantedAge, chosen);
             }
         } else {
-            queue.enqueue(block, cropType, delay, replantedAge, null);
+            plugin.enqueueReplant(block, cropType, delay, replantedAge, null);
         }
 
         if (wasMature) {

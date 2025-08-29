@@ -24,7 +24,7 @@ public class ReplenishPlugin extends JavaPlugin {
         replantQueue = new ReplantQueue(this, cfg().maxReplantsPerTick, ageMeta);
         replantQueue.start();
 
-        getServer().getPluginManager().registerEvents(new ReplenishListener(this, replantQueue, ageMeta), this);
+        getServer().getPluginManager().registerEvents(new ReplenishListener(this, ageMeta), this);
 
         ReplenishCommand cmd = new ReplenishCommand(this);
         if (getCommand("replenish") != null) {
@@ -67,6 +67,15 @@ public class ReplenishPlugin extends JavaPlugin {
     public boolean isCropEnabled(Material crop) { return cfg().cropEnabled.getOrDefault(crop, true); }
     public ConfigCache cfg() { return cacheRef.get(); }
     public AgeMetaRegistry ages() { return ageMeta; }
+
+    public void enqueueReplant(org.bukkit.block.Block block,
+                               org.bukkit.Material plantMat,
+                               int delayTicks,
+                               int targetAge,
+                               org.bukkit.block.BlockFace cocoaFacing) {
+        ReplantQueue q = this.replantQueue;
+        if (q != null) q.enqueue(block, plantMat, delayTicks, targetAge, cocoaFacing);
+    }
 
     public static final class ConfigCache {
         final boolean enabled;
