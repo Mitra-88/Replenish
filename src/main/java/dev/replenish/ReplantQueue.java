@@ -9,7 +9,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.plugin.Plugin;
 
-import java.util.ArrayDeque;
+import java.util.Arrays;
 
 public final class ReplantQueue {
 
@@ -20,33 +20,41 @@ public final class ReplantQueue {
     private static final class Job {
         Block block;
         Material plantMat;
-        int slotIndex;
         int targetAge;
         BlockFace cocoaFacing;
+        int next = -1;
 
-        void set(Block b, Material m, int age, BlockFace face, int slot) {
-            block = b; plantMat = m; targetAge = age; cocoaFacing = face; slotIndex = slot;
+        void set(Block b, Material m, int age, BlockFace face) {
+            block = b; plantMat = m; targetAge = age; cocoaFacing = face; next = -1;
         }
-        void clear() { block = null; plantMat = null; cocoaFacing = null; }
+        void clear() { block = null; plantMat = null; cocoaFacing = null; next = -1; }
     }
 
     private final Plugin plugin;
+    private final AgeMetaRegistry ages;
     private final int maxPerTick;
-    private final ArrayDeque<Job>[] wheel;
-    private final ArrayDeque<Job> pool;
+
+    // Flat wheel: head indices; -1 = empty
+    private final int[] wheelHeads = new int[WHEEL_SIZE];
+
+    // Pool storage
+    private Job[] pool = new Job[2048];
+    private int freeHead = -1; // singly-linked free list using pool[i].next
+    private int poolSize = 0;
 
     private int cursor = 0;
     private int taskId = -1;
     private boolean started = false;
 
-    @SuppressWarnings("unchecked")
-    public ReplantQueue(Plugin plugin, int maxPerTick) {
+    public ReplantQueue(Plugin plugin, int maxPerTick, AgeMetaRegistry ages) {
         this.plugin = plugin;
+        this.ages = ages;
         this.maxPerTick = Math.max(256, maxPerTick);
-        this.wheel = (ArrayDeque<Job>[]) new ArrayDeque[WHEEL_SIZE];
-        for (int i = 0; i < WHEEL_SIZE; i++) wheel[i] = new ArrayDeque<>(64);
-        this.pool = new ArrayDeque<>(1024);
-        for (int i = 0; i < 1024; i++) pool.addLast(new Job());
+
+        Arrays.fill(wheelHeads, -1);
+
+        // prime the pool with actual Job instances
+        primePool();
     }
 
     public void start() {
@@ -60,44 +68,52 @@ public final class ReplantQueue {
         started = false;
         if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
         taskId = -1;
-        for (var q : wheel) q.clear();
-        pool.clear();
+
+        Arrays.fill(wheelHeads, -1);
+
+        // reset and re-prime pool to a clean state
+        pool = new Job[2048];
+        freeHead = -1;
+        poolSize = 0;
+        primePool();
+
         cursor = 0;
     }
 
     public void enqueue(Block block, Material plantMat, int delayTicks, int targetAge, BlockFace cocoaFacing) {
         final int delay = Math.max(1, delayTicks) & WHEEL_MASK;
         final int slot = (cursor + delay) & WHEEL_MASK;
-        final Job j = (pool.isEmpty() ? new Job() : pool.pollFirst());
-        j.set(block, plantMat, targetAge, cocoaFacing, slot);
-        wheel[slot].addLast(j);
+
+        int idx = acquire();
+        Job j = pool[idx];
+        j.set(block, plantMat, targetAge, cocoaFacing);
+
+        // push-front into slot list
+        j.next = wheelHeads[slot];
+        wheelHeads[slot] = idx;
     }
 
     private void tick() {
-        final ArrayDeque<Job> bucket = wheel[cursor];
+        int head = wheelHeads[cursor];
         int processed = 0;
 
-        while (!bucket.isEmpty() && processed < maxPerTick) {
-            final Job job = bucket.pollFirst();
+        while (head != -1 && processed < maxPerTick) {
+            Job j = pool[head];
+            int next = j.next;
+
             try {
-                replant(job);
+                replant(j);
             } catch (Throwable ignored) {
             } finally {
-                job.clear();
-                pool.addLast(job);
+                j.clear();
+                release(head);
             }
+            head = next;
             processed++;
         }
-        cursor = (cursor + 1) & WHEEL_MASK;
-    }
 
-    private static void setAge(BlockData data, int age, Block block) {
-        if (data instanceof Ageable a) {
-            a.setAge(Math.max(0, Math.min(a.getMaximumAge(), age)));
-            block.setBlockData(a, false);
-        } else {
-            block.setBlockData(data, false);
-        }
+        wheelHeads[cursor] = head; // remaining (if any)
+        cursor = (cursor + 1) & WHEEL_MASK;
     }
 
     private void replant(Job j) {
@@ -111,7 +127,7 @@ public final class ReplantQueue {
             block.setType(Material.COCOA, false);
             final BlockData data = block.getBlockData();
             if (data instanceof Directional d) d.setFacing(face);
-            setAge(data, j.targetAge, block);
+            setAgeClamped(data, j.targetAge, plant, block);
             return;
         }
 
@@ -119,12 +135,63 @@ public final class ReplantQueue {
         if (plant == Material.NETHER_WART) {
             if (under != Material.SOUL_SAND) return;
             block.setType(Material.NETHER_WART, false);
-            setAge(block.getBlockData(), j.targetAge, block);
+            setAgeClamped(block.getBlockData(), j.targetAge, plant, block);
             return;
         }
 
         if (under != Material.FARMLAND) return;
         block.setType(plant, false);
-        setAge(block.getBlockData(), j.targetAge, block);
+        setAgeClamped(block.getBlockData(), j.targetAge, plant, block);
+    }
+
+    private void setAgeClamped(BlockData data, int age, Material plant, Block block) {
+        if (data instanceof Ageable a) {
+            int max = ages.get(plant).maxAge;
+            if (max > 0) a.setAge(Math.max(0, Math.min(max, age)));
+            block.setBlockData(a, false);
+        } else {
+            block.setBlockData(data, false);
+        }
+    }
+
+    // ----- pool helpers -----
+    private void ensureCapacity(int need) {
+        if (pool.length >= need) return;
+        Job[] n = new Job[Math.max(need, pool.length * 2)];
+        System.arraycopy(pool, 0, n, 0, pool.length);
+        pool = n;
+    }
+
+    /** allocate N Job objects and link them into the free list */
+    private void primePool() {
+        ensureCapacity(1024);
+        // create jobs [poolSize … n-1] and release them
+        int target = Math.max(poolSize, 1024);
+        for (int i = poolSize; i < target; i++) {
+            pool[i] = new Job();
+            release(i); // safe now — j not null
+        }
+        poolSize = Math.max(poolSize, target);
+    }
+
+    private void release(int idx) {
+        Job j = pool[idx];
+        if (j != null) j.clear();           // null-safe now
+        else pool[idx] = new Job();         // make sure slot is usable next time
+        pool[idx].next = freeHead;
+        freeHead = idx;
+    }
+
+    private int acquire() {
+        if (freeHead != -1) {
+            int idx = freeHead;
+            freeHead = pool[idx].next;
+            pool[idx].next = -1;
+            return idx;
+        }
+        // no free nodes: create a new one at the end
+        ensureCapacity(poolSize + 1);
+        if (pool[poolSize] == null) pool[poolSize] = new Job();
+        return poolSize++;
     }
 }

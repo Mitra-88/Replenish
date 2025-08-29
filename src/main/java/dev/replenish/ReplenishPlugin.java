@@ -7,21 +7,24 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ReplenishPlugin extends JavaPlugin {
 
-    private volatile ConfigCache cache = new ConfigCache();
+    private final AtomicReference<ConfigCache> cacheRef = new AtomicReference<>(new ConfigCache());
     private ReplantQueue replantQueue;
+    private AgeMetaRegistry ageMeta;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        ageMeta = new AgeMetaRegistry(this);
         reloadLocalConfig();
 
-        replantQueue = new ReplantQueue(this, cache.maxReplantsPerTick);
+        replantQueue = new ReplantQueue(this, cfg().maxReplantsPerTick, ageMeta);
         replantQueue.start();
 
-        getServer().getPluginManager().registerEvents(new ReplenishListener(this, replantQueue), this);
+        getServer().getPluginManager().registerEvents(new ReplenishListener(this, replantQueue, ageMeta), this);
 
         ReplenishCommand cmd = new ReplenishCommand(this);
         if (getCommand("replenish") != null) {
@@ -49,18 +52,21 @@ public class ReplenishPlugin extends JavaPlugin {
         c.set("maxReplantsPerTick", maxPerTick);
 
         saveConfig();
-        this.cache = ConfigCache.from(c);
+
+        ConfigCache newCache = ConfigCache.from(c);
+        cacheRef.set(newCache); // atomic COW
 
         if (replantQueue != null) {
             replantQueue.stop();
-            replantQueue = new ReplantQueue(this, cache.maxReplantsPerTick);
+            replantQueue = new ReplantQueue(this, newCache.maxReplantsPerTick, ageMeta);
             replantQueue.start();
         }
     }
 
-    public boolean isEnabledGlobally() { return cache.enabled; }
-    public boolean isCropEnabled(Material crop) { return cache.cropEnabled.getOrDefault(crop, true); }
-    public ConfigCache cfg() { return cache; }
+    public boolean isEnabledGlobally() { return cfg().enabled; }
+    public boolean isCropEnabled(Material crop) { return cfg().cropEnabled.getOrDefault(crop, true); }
+    public ConfigCache cfg() { return cacheRef.get(); }
+    public AgeMetaRegistry ages() { return ageMeta; }
 
     public static final class ConfigCache {
         final boolean enabled;
@@ -118,7 +124,6 @@ public class ReplenishPlugin extends JavaPlugin {
             map.put(Material.WHEAT, c.getBoolean("crops.wheat", true));
             map.put(Material.CARROTS, c.getBoolean("crops.carrots", true));
             map.put(Material.POTATOES, c.getBoolean("crops.potatoes", true));
-            map.put(Material.BEETROOTS, c.getBoolean("crops.beetroots", true));
             map.put(Material.NETHER_WART, c.getBoolean("crops.nether_wart", true));
             map.put(Material.COCOA, c.getBoolean("crops.cocoa", true));
             return map;
@@ -129,7 +134,6 @@ public class ReplenishPlugin extends JavaPlugin {
             map.put(Material.WHEAT, true);
             map.put(Material.CARROTS, true);
             map.put(Material.POTATOES, true);
-            map.put(Material.BEETROOTS, true);
             map.put(Material.NETHER_WART, true);
             map.put(Material.COCOA, true);
             return map;

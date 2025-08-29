@@ -120,7 +120,6 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 boolean w = plugin.isCropEnabled(Material.WHEAT);
                 boolean c = plugin.isCropEnabled(Material.CARROTS);
                 boolean p = plugin.isCropEnabled(Material.POTATOES);
-                boolean b = plugin.isCropEnabled(Material.BEETROOTS);
                 boolean n = plugin.isCropEnabled(Material.NETHER_WART);
                 boolean co = plugin.isCropEnabled(Material.COCOA);
 
@@ -128,8 +127,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("  " + crop("🌾", "wheat", w) + ChatColor.GRAY + "  ·  "
                         + crop("🥕", "carrots", c) + ChatColor.GRAY + "  ·  "
                         + crop("🥔", "potatoes", p));
-                sender.sendMessage("  " + crop("🟥", "beetroots", b) + ChatColor.GRAY + "  ·  "
-                        + crop("🔥", "nether_wart", n) + ChatColor.GRAY + "  ·  "
+                sender.sendMessage("  " + crop("🔥", "nether_wart", n) + ChatColor.GRAY + "  ·  "
                         + crop("🍫", "cocoa", co));
 
                 // LEGEND

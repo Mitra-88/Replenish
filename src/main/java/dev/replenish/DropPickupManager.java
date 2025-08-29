@@ -10,8 +10,13 @@ import org.bukkit.inventory.PlayerInventory;
 import java.util.Collection;
 import java.util.Map;
 
+/** Avoids hot allocations by reusing mutable Location objects per thread. */
 public final class DropPickupManager {
     private DropPickupManager() {}
+
+    // Per-thread scratch locations to dodge new Location(...) churn
+    private static final ThreadLocal<Location> TMP_LOC_1 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
+    private static final ThreadLocal<Location> TMP_LOC_2 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
 
     public static void giveToPlayerOrDrop(Player player, Location dropLoc, Collection<ItemStack> drops) {
         if (player == null || drops == null || drops.isEmpty()) return;
@@ -34,7 +39,22 @@ public final class DropPickupManager {
         }
 
         if (anyAdded) {
-            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
+            // use the "fill into" overload to avoid new Location
+            Location soundAt = TMP_LOC_1.get();
+            player.getLocation(soundAt);
+            player.playSound(soundAt, Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
         }
+    }
+
+    /** Utility to compute a centered drop location without new objects. */
+    public static Location centeredDropLocation(Location target) {
+        Location out = TMP_LOC_2.get();
+        out.setWorld(target.getWorld());
+        out.setX(target.getBlockX() + 0.5);
+        out.setY(target.getBlockY() + 0.2);
+        out.setZ(target.getBlockZ() + 0.5);
+        out.setYaw(0f);
+        out.setPitch(0f);
+        return out;
     }
 }

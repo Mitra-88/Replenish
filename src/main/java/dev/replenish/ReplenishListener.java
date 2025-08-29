@@ -1,8 +1,8 @@
 package dev.replenish;
 
 import dev.aurelium.auraskills.api.AuraSkillsApi;
-import dev.aurelium.auraskills.api.user.SkillsUser;
 import dev.aurelium.auraskills.api.skill.Skills;
+import dev.aurelium.auraskills.api.user.SkillsUser;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -18,18 +18,28 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 
 public class ReplenishListener implements Listener {
 
     private final ReplenishPlugin plugin;
     private final ReplantQueue queue;
+    private final AgeMetaRegistry ages;
 
     private static final Set<Material> SUPPORTED = EnumSet.of(
-            Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.BEETROOTS,
+            Material.WHEAT, Material.CARROTS, Material.POTATOES,
             Material.NETHER_WART, Material.COCOA
     );
 
@@ -47,18 +57,30 @@ public class ReplenishListener implements Listener {
             Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD
     );
 
-    public ReplenishListener(ReplenishPlugin plugin, ReplantQueue queue) {
+    public ReplenishListener(ReplenishPlugin plugin, ReplantQueue queue, AgeMetaRegistry ages) {
         this.plugin = plugin;
         this.queue = queue;
+        this.ages = ages;
     }
 
+    // -------- Inventory change -> invalidate seed cache (fixed events) --------
+    @EventHandler public void onClick(InventoryClickEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
+    @EventHandler public void onDrag(InventoryDragEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
+    @EventHandler public void onOpen(InventoryOpenEvent e) { if (e.getPlayer() instanceof Player p) SeedIndex.invalidate(p); }
+    @EventHandler public void onClose(InventoryCloseEvent e) { if (e.getPlayer() instanceof Player p) SeedIndex.invalidate(p); }
+    @EventHandler public void onSwap(PlayerSwapHandItemsEvent e) { SeedIndex.invalidate(e.getPlayer()); }
+    @EventHandler public void onPickup(EntityPickupItemEvent e) { if (e.getEntity() instanceof Player p) SeedIndex.invalidate(p); }
+    @EventHandler public void onDrop(PlayerDropItemEvent e) { SeedIndex.invalidate(e.getPlayer()); }
+
+    // -------- Main crop break logic --------
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent e) {
-        ReplenishPlugin.ConfigCache cfg = plugin.cfg();
-        if (!cfg.enabled) return;
-
+        // cheapest exits first
         Player p = e.getPlayer();
         if (p.getGameMode() == GameMode.CREATIVE) return;
+
+        ReplenishPlugin.ConfigCache cfg = plugin.cfg();
+        if (!cfg.enabled) return;
 
         Block block = e.getBlock();
         Material cropType = block.getType();
@@ -69,12 +91,7 @@ public class ReplenishListener implements Listener {
             if (!ALLOWED_TOOLS.contains(toolType)) return;
         }
 
-        BlockData preData = block.getBlockData();
-        int originalAge = 0, maxAge = 0;
-        if (preData instanceof Ageable a) { originalAge = a.getAge(); maxAge = a.getMaximumAge(); }
-        boolean wasMature = maxAge > 0 && originalAge >= maxAge;
-        int replantedAge = wasMature ? 0 : originalAge;
-
+        // surface / anchor validation
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
         } else {
@@ -86,25 +103,36 @@ public class ReplenishListener implements Listener {
             }
         }
 
+        // maturity (use cached max age)
+        BlockData preData = block.getBlockData();
+        int originalAge = 0;
+        boolean wasMature = false;
+        if (preData instanceof Ageable a) {
+            int maxAge = ages.get(cropType).maxAge;
+            originalAge = a.getAge();
+            wasMature = maxAge > 0 && originalAge >= maxAge;
+        }
+        int replantedAge = wasMature ? 0 : originalAge;
+
+        // seed requirement (O(1) via SeedIndex)
         Material seedMat = seedFor(cropType);
         if (wasMature && cfg.requirePlayerSeed) {
             if (seedMat == null) return;
-            if (!consumeOneSeedIfAvailable(p, seedMat)) return;
+            if (!SeedIndex.consume(p, seedMat)) return;
         }
 
+        // prevent vanilla drops; we’ll handle them
         e.setDropItems(false);
-        ItemStack tool = p.getInventory().getItemInMainHand();
-        Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops)
-                ? block.getDrops(tool, p)
-                : Collections.emptyList();
+        var tool = p.getInventory().getItemInMainHand();
+        Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops) ? block.getDrops(tool, p) : Collections.emptyList();
 
-        BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d)
-                ? d.getFacing() : null;
+        BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d) ? d.getFacing() : null;
         BlockFace playerFacing = p.getFacing();
 
         block.setType(Material.AIR, false);
+
         if (!drops.isEmpty()) {
-            Location dropLoc = block.getLocation().add(0.5, 0.2, 0.5);
+            Location dropLoc = DropPickupManager.centeredDropLocation(block.getLocation());
             if (cfg.directPickup) {
                 DropPickupManager.giveToPlayerOrDrop(p, dropLoc, drops);
             } else {
@@ -142,18 +170,14 @@ public class ReplenishListener implements Listener {
         if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
         SkillsUser user = AuraSkillsApi.get().getUser(p.getUniqueId());
         if (user == null || !user.isLoaded()) return;
-        double xp;
-        switch (cropType) {
-            case WHEAT -> xp = 1.0;
-            case CARROTS, POTATOES -> xp = 0.75;
-            case BEETROOTS -> xp = 0.5;
-            case NETHER_WART -> xp = 1.2;
-            case COCOA -> xp = 0.6;
-            default -> xp = 0;
-        }
-        if (xp > 0) {
-            user.addSkillXp(Skills.FARMING, xp);
-        }
+        double xp = switch (cropType) {
+            case WHEAT -> 3.0;
+            case CARROTS, POTATOES -> 3.5;
+            case NETHER_WART -> 3.7;
+            case COCOA -> 4.0;
+            default -> 0;
+        };
+        if (xp > 0) user.addSkillXp(Skills.FARMING, xp);
     }
 
     private BlockFace findAdjacentJungle(Block b) {
@@ -170,30 +194,9 @@ public class ReplenishListener implements Listener {
             case WHEAT -> Material.WHEAT_SEEDS;
             case CARROTS -> Material.CARROT;
             case POTATOES -> Material.POTATO;
-            case BEETROOTS -> Material.BEETROOT_SEEDS;
             case NETHER_WART -> Material.NETHER_WART;
             case COCOA -> Material.COCOA_BEANS;
             default -> null;
         };
-    }
-
-    private boolean consumeOneSeedIfAvailable(Player p, Material seedMat) {
-        PlayerInventory inv = p.getInventory();
-        for (int i = 0, n = inv.getSize(); i < n; i++) {
-            ItemStack is = inv.getItem(i);
-            if (is == null || is.getType() != seedMat || is.getAmount() <= 0) continue;
-            int amt = is.getAmount();
-            if (amt > 1) { is.setAmount(amt - 1); inv.setItem(i, is); }
-            else { inv.clear(i); }
-            return true;
-        }
-        ItemStack off = inv.getItemInOffHand();
-        if (off.getType() == seedMat && off.getAmount() > 0) {
-            int amt = off.getAmount();
-            if (amt > 1) { off.setAmount(amt - 1); inv.setItemInOffHand(off); }
-            else { inv.setItemInOffHand(null); }
-            return true;
-        }
-        return false;
     }
 }

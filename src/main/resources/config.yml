@@ -15,6 +15,5 @@ crops:
   wheat: true
   carrots: true
   potatoes: true
-  beetroots: true
   nether_wart: true
   cocoa: true
