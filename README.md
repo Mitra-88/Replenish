@@ -1,79 +1,53 @@
 # Replenish
 
-A quality-of-life farming plugin for Minecraft servers, inspired by Hypixel Skyblock's "Replenish" enchant.  
-When enabled, it **automatically replants crops** after harvesting, removing the need to manually replant.
+A quality-of-life farming plugin for Minecraft servers, inspired by Hypixel Skyblock's “Replenish” enchant.  
+When enabled, it **automatically replants crops** after harvesting, so players don’t have to.
 
 ---
 
 ## ✨ Features
-- **Automatic replanting** for supported crops:
-  - Wheat
-  - Potatoes
-  - Carrots
-  - Nether Wart
-  - Cocoa Beans (with axe support)
-- **Fortune I/II/III support** for extra crop drops.
-- **Global toggle command** for enabling/disabling the feature server-wide (OPs only).
-- **Configurable crop list** (easily add/remove supported crops in `config.yml`).
-- **Delay before replanting** (~15ms) for smoother, more natural gameplay feel.
-- **Works even on partially grown crops** — always replants.
-- **No seeds? No replant!** Requires the player to have the correct seed/item in their inventory.
-- **Optimized for Bukkit/Spigot/Paper/Leaf/PufferFish/Purpur 1.21.8** with minimal overhead.
-- **No unnecessary logging** — clean console output.
-- **Bug-free** replant system using scheduled tasks to avoid Spigot overwrite issues.
-
----
-
-## 🆚 Improvements Over the Original Version
-
-### Original Issues:
-- Still on 1.20.4.
-- Only supported full-grown crops.
-- Replanted even if the player **did not have seeds**.
-- Only worked with hoes, no axe support for Cocoa Beans.
-- No Fortune enchantment support.
-- Used immediate block updates, causing replant to fail on break → replant loops.
-- No global enable/disable toggle — always on.
-- No partial crop handling — breaking partially grown crops didn’t replant.
-- Required per-player setup rather than global.
-- No configurable crops.
-
-### Current Improvements:
-- ✅ Supports 1.21.8.
-- ✅ Supports **both fully grown and partially grown crops**.
-- ✅ Requires seeds/items in inventory before replanting.
-- ✅ Added **Fortune support** for realistic farming boosts.
-- ✅ Added **axe support for Cocoa Beans**.
-- ✅ Added **global OP-only toggle** to enable/disable.
-- ✅ Fixed timing bug by adding a short replant delay.
-- ✅ Fully global system — no per-player setup.
-- ✅ Cleaned up unused code, removed debug logs, fixed API warnings.
-- ✅ More maintainable structure using clear method separation.
+- **Automatic replanting** for:
+    - Wheat
+    - Potatoes
+    - Carrots
+    - Nether Wart
+    - Cocoa Beans (requires axe)
+- **Fortune I/II/III respected** via vanilla/Bukkit drop calc.
+- **Global toggle** (permission-gated) to enable/disable server-wide.
+- **Configurable per-crop toggles** in `config.yml` (for the five supported crops).
+- **Replant delay**: defaults to **1 tick (~50ms)** for a smoother feel.
+- **Partial crops handled** — breaking an immature crop replants it at the same age.
+- **Seed requirement (configurable)** — by default, **mature** crops only replant if the player has the correct seed/item in inventory.
+- **Lightweight**: minimal overhead, clean console output.
+- **Robust replanting** using scheduled tasks to avoid race/overwrite issues.
+- **Tested on modern Bukkit/Spigot/Paper-family servers (1.21.x)**.
 
 ---
 
 ## 📦 Installation
-1. Drop the `.jar` file into your server’s `plugins` folder.
+1. Drop the `.jar` into your server’s `plugins` folder.
 2. Restart the server.
-3. Use `/replenish` (OP only) to toggle the feature on or off.
+3. Grant permissions as needed (see below).
 
 ---
 
 ## ⚙️ Configuration
 Located in `config.yml`:
+
 ```yaml
+enabled: true
+requirePlayerSeed: true
+restrictToHoesAndAxes: true
+directPickup: true
+
+replantDelayMs: 15
+
+maxReplantsPerTick: 4096
+
 crops:
-  WHEAT: true
-  POTATOES: true
-  CARROTS: true
-  NETHER_WART: true
-  COCOA: true
-```
-- `true` → crop is affected by Replenish.
-- `false` → crop is ignored.
-
----
-
-## 🛠 Commands
-- `/replenish` — Toggles the plugin globally (OP only).
+  wheat: true
+  carrots: true
+  potatoes: true
+  nether_wart: true
+  cocoa: true
 ```
