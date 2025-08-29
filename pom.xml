@@ -6,7 +6,7 @@
 
     <groupId>dev</groupId>
     <artifactId>Replenish</artifactId>
-    <version>3.1.0</version>
+    <version>3.1.1</version>
     <packaging>jar</packaging>
 
     <name>Replenish</name>
@@ -69,7 +69,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- AuraSkills API (provided at runtime by server plugin) -->
         <dependency>
             <groupId>dev.aurelium</groupId>
             <artifactId>auraskills-api-bukkit</artifactId>
