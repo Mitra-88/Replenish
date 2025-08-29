@@ -12,8 +12,6 @@ import java.util.Map;
 
 public final class DropPickupManager {
     private DropPickupManager() {}
-
-    // Per-thread scratch locations to dodge new Location(...) churn
     private static final ThreadLocal<Location> TMP_LOC_1 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
     private static final ThreadLocal<Location> TMP_LOC_2 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
 

@@ -1,9 +1,7 @@
 enabled: true
-qolMode: true
 requirePlayerSeed: true
 restrictToHoesAndAxes: true
 directPickup: true
-allowImmatureDrops: false
 
 # ~15ms default → 1 tick
 replantDelayMs: 15

@@ -83,7 +83,7 @@ public class ReplenishListener implements Listener {
         Material cropType = block.getType();
         if (!SUPPORTED.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
-        if (cfg.qolMode && cfg.restrictToHoesAndAxes) {
+        if (cfg.restrictToHoesAndAxes) {
             Material toolType = p.getInventory().getItemInMainHand().getType();
             if (!ALLOWED_TOOLS.contains(toolType)) return;
         }
@@ -117,7 +117,7 @@ public class ReplenishListener implements Listener {
 
         e.setDropItems(false);
         var tool = p.getInventory().getItemInMainHand();
-        Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops) ? block.getDrops(tool, p) : Collections.emptyList();
+        Collection<ItemStack> drops = wasMature ? block.getDrops(tool, p) : Collections.emptyList();
 
         BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d) ? d.getFacing() : null;
         BlockFace playerFacing = p.getFacing();

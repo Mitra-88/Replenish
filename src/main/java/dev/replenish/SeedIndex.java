@@ -21,7 +21,6 @@ public final class SeedIndex {
         Map<Material, Integer> map = INDEX.computeIfAbsent(p, k -> buildMap(inv));
         Integer slot = map.get(seedMat);
 
-        // Fast path
         if (slot != null && slot >= 0) {
             if (consumeAt(inv, slot, seedMat)) {
                 ItemStack is = inv.getItem(slot);

@@ -70,22 +70,18 @@ public class ReplenishPlugin extends JavaPlugin {
 
     public static final class ConfigCache {
         final boolean enabled;
-        final boolean qolMode;
         final boolean requirePlayerSeed;
         final boolean restrictToHoesAndAxes;
         final boolean directPickup;
-        final boolean allowImmatureDrops;
         final int replantDelayTicks;
         final int maxReplantsPerTick;
         final Map<Material, Boolean> cropEnabled;
 
         private ConfigCache() {
             this.enabled = true;
-            this.qolMode = true;
             this.requirePlayerSeed = true;
             this.restrictToHoesAndAxes = true;
             this.directPickup = true;
-            this.allowImmatureDrops = false;
             this.replantDelayTicks = 1;
             this.maxReplantsPerTick = 2048;
             this.cropEnabled = defaultCrops();
@@ -94,26 +90,22 @@ public class ReplenishPlugin extends JavaPlugin {
         static ConfigCache from(FileConfiguration c) {
             return new ConfigCache(
                     c.getBoolean("enabled", true),
-                    c.getBoolean("qolMode", true),
                     c.getBoolean("requirePlayerSeed", true),
                     c.getBoolean("restrictToHoesAndAxes", true),
                     c.getBoolean("directPickup", true),
-                    c.getBoolean("allowImmatureDrops", false),
                     Math.max(1, c.getInt("replantDelayTicks", 1)),
                     Math.max(256, c.getInt("maxReplantsPerTick", 2048)),
                     readCrops(c)
             );
         }
 
-        private ConfigCache(boolean enabled, boolean qolMode, boolean requirePlayerSeed, boolean restrictToHoesAndAxes,
-                            boolean directPickup, boolean allowImmatureDrops, int replantDelayTicks, int maxReplantsPerTick,
+        private ConfigCache(boolean enabled, boolean requirePlayerSeed, boolean restrictToHoesAndAxes,
+                            boolean directPickup, int replantDelayTicks, int maxReplantsPerTick,
                             Map<Material, Boolean> cropEnabled) {
             this.enabled = enabled;
-            this.qolMode = qolMode;
             this.requirePlayerSeed = requirePlayerSeed;
             this.restrictToHoesAndAxes = restrictToHoesAndAxes;
             this.directPickup = directPickup;
-            this.allowImmatureDrops = allowImmatureDrops;
             this.replantDelayTicks = replantDelayTicks;
             this.maxReplantsPerTick = maxReplantsPerTick;
             this.cropEnabled = cropEnabled;

@@ -1,6 +1,6 @@
 package dev.replenish;
 
-import org.bukkit.ChatColor;
+import dev.replenish.ColorUtils;
 import org.bukkit.Material;
 import org.bukkit.command.*;
 
@@ -13,51 +13,10 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
 
     public ReplenishCommand(ReplenishPlugin plugin) { this.plugin = plugin; }
 
-    private static String bar() {
-        return ChatColor.DARK_GRAY + "────────────";
-    }
-
-    private static String title(String subtitle) {
-        return ChatColor.GOLD + "" + ChatColor.BOLD + "Replenish"
-                + ChatColor.GRAY + "  " + ChatColor.DARK_GRAY + "•" + ChatColor.GRAY + "  " + subtitle;
-    }
-
-    private static String k(String key) {
-        return ChatColor.GRAY + key + ChatColor.DARK_GRAY + ": " + ChatColor.RESET;
-    }
-
-    private static String onOff(boolean v) {
-        return v ? ChatColor.GREEN + "ON" + ChatColor.RESET : ChatColor.RED + "OFF" + ChatColor.RESET;
-    }
-
-    private static String chip(boolean v) {
-        return v
-                ? ChatColor.DARK_GRAY + "[" + ChatColor.GREEN + "✓" + ChatColor.DARK_GRAY + "]" + ChatColor.RESET
-                : ChatColor.DARK_GRAY + "[" + ChatColor.RED + "✗" + ChatColor.DARK_GRAY + "]" + ChatColor.RESET;
-    }
-
-    private static String tintMaxPerTick(int value) {
-        ChatColor c = (value >= 32) ? ChatColor.GREEN : (value >= 8 ? ChatColor.YELLOW : ChatColor.RED);
-        return c + String.valueOf(value) + ChatColor.RESET;
-    }
-
-    private static String tintDelay(int ticks) {
-        ChatColor c = (ticks <= 2) ? ChatColor.GREEN : (ticks <= 10 ? ChatColor.YELLOW : ChatColor.RED);
-        return c + String.valueOf(ticks) + ChatColor.RESET;
-    }
-
-    private static String cropItem(String name, boolean enabled) {
-        return (enabled ? ChatColor.GREEN : ChatColor.RED) + name + ChatColor.RESET + " " + chip(enabled);
-    }
-
-    private static void send(CommandSender s, String msg) { s.sendMessage(msg); }
+    private static void send(CommandSender s, String msg) { s.sendMessage(ColorUtils.color(msg)); }
 
     private static String usage(String base) {
-        return ChatColor.GRAY + "Usage: " + ChatColor.YELLOW + "/" + base + ChatColor.WHITE + " status|toggle|reload";
-    }
-
-    private static void noPerm(CommandSender s) {
-        send(s, ChatColor.RED + "You don’t have permission for that.");
+        return "&7Usage: &e/" + base + " &fstatus|toggle|reload";
     }
 
     @Override
@@ -70,65 +29,48 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "toggle" -> {
-                if (!sender.hasPermission("replenish.toggle")) { noPerm(sender); return true; }
+                if (!sender.hasPermission("replenish.toggle")) { send(sender, "&cYou don’t have permission."); return true; }
                 boolean now = !plugin.isEnabledGlobally();
                 plugin.getConfig().set("enabled", now);
                 plugin.saveConfig();
                 plugin.reloadLocalConfig();
-                send(sender, ChatColor.GRAY + "Global: " + onOff(now));
+                send(sender, "&7Global: " + (now ? "&aON" : "&cOFF"));
                 return true;
             }
             case "reload" -> {
-                if (!sender.hasPermission("replenish.reload")) { noPerm(sender); return true; }
+                if (!sender.hasPermission("replenish.reload")) { send(sender, "&cYou don’t have permission."); return true; }
                 plugin.reloadLocalConfig();
-                send(sender, ChatColor.GREEN + "Config reloaded.");
+                send(sender, "&aConfig reloaded.");
                 return true;
             }
             case "status" -> {
-                if (!sender.hasPermission("replenish.status")) { noPerm(sender); return true; }
+                if (!sender.hasPermission("replenish.status")) { send(sender, "&cYou don’t have permission."); return true; }
 
                 var cfg = plugin.cfg();
-                String ver = plugin.getDescription().getVersion();
 
-                send(sender, bar());
-                send(sender, title("v" + ver));
-                send(sender, bar());
+                send(sender, "&6&lReplenish &7v" + plugin.getDescription().getVersion());
+                send(sender, "&8-----------------");
 
-                send(sender, ChatColor.GOLD + "Core");
-                send(sender, "  " + k("Enabled") + onOff(cfg.enabled) + ChatColor.DARK_GRAY + "  " + chip(cfg.enabled));
-                send(sender, "  " + k("QoL mode") + chip(cfg.qolMode));
-                send(sender, "  " + k("Require seed") + onOff(cfg.requirePlayerSeed));
-                send(sender, "  " + k("Restrict tools") + chip(cfg.restrictToHoesAndAxes));
-                send(sender, "  " + k("Direct pickup") + onOff(cfg.directPickup));
-                send(sender, "  " + k("Immature drops") + chip(cfg.allowImmatureDrops));
+                send(sender, "&eCore");
+                send(sender, "  &7Enabled: " + (cfg.enabled ? "&aON" : "&cOFF"));
+                send(sender, "  &7Require seed: " + (cfg.requirePlayerSeed ? "&aYes" : "&cNo"));
+                send(sender, "  &7Restrict tools: " + (cfg.restrictToHoesAndAxes ? "&aYes" : "&cNo"));
+                send(sender, "  &7Direct pickup: " + (cfg.directPickup ? "&aYes" : "&cNo"));
 
                 send(sender, "");
-                send(sender, ChatColor.GOLD + "Tuning");
-                send(sender, "  " + k("Replant delay (ticks)") + tintDelay(cfg.replantDelayTicks) + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "lower = faster");
-                send(sender, "  " + k("Max replants/tick") + tintMaxPerTick(cfg.maxReplantsPerTick) + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "higher = more");
-
-                boolean wheat = plugin.isCropEnabled(Material.WHEAT);
-                boolean carrots = plugin.isCropEnabled(Material.CARROTS);
-                boolean potatoes = plugin.isCropEnabled(Material.POTATOES);
-                boolean wart = plugin.isCropEnabled(Material.NETHER_WART);
-                boolean cocoa = plugin.isCropEnabled(Material.COCOA);
+                send(sender, "&eTuning");
+                send(sender, "  &7Replant delay (ticks): &f" + cfg.replantDelayTicks);
+                send(sender, "  &7Max replants/tick: &f" + cfg.maxReplantsPerTick);
 
                 send(sender, "");
-                send(sender, ChatColor.GOLD + "Crops");
-                send(sender, "  " + cropItem("Wheat", wheat) + ChatColor.DARK_GRAY + "  •  "
-                        + cropItem("Carrots", carrots) + ChatColor.DARK_GRAY + "  •  "
-                        + cropItem("Potatoes", potatoes));
-                send(sender, "  " + cropItem("Nether Wart", wart) + ChatColor.DARK_GRAY + "  •  "
-                        + cropItem("Cocoa", cocoa));
+                send(sender, "&eCrops");
+                send(sender, "  &7Wheat: " + (plugin.isCropEnabled(Material.WHEAT) ? "&a✓" : "&c✗"));
+                send(sender, "  &7Carrots: " + (plugin.isCropEnabled(Material.CARROTS) ? "&a✓" : "&c✗"));
+                send(sender, "  &7Potatoes: " + (plugin.isCropEnabled(Material.POTATOES) ? "&a✓" : "&c✗"));
+                send(sender, "  &7Nether Wart: " + (plugin.isCropEnabled(Material.NETHER_WART) ? "&a✓" : "&c✗"));
+                send(sender, "  &7Cocoa: " + (plugin.isCropEnabled(Material.COCOA) ? "&a✓" : "&c✗"));
 
-                send(sender, "");
-                send(sender, ChatColor.GRAY + "ON/OFF are states; "
-                        + ChatColor.DARK_GRAY + "[" + ChatColor.GREEN + "✓" + ChatColor.DARK_GRAY + "]"
-                        + ChatColor.GRAY + " enabled, "
-                        + ChatColor.DARK_GRAY + "[" + ChatColor.RED + "✗" + ChatColor.DARK_GRAY + "]"
-                        + ChatColor.GRAY + " disabled");
-
-                send(sender, bar());
+                send(sender, "&8-----------------");
                 return true;
             }
             default -> {
