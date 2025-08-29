@@ -18,7 +18,7 @@ When enabled, it **automatically replants crops** after harvesting, removing the
 - **Delay before replanting** (~15ms) for smoother, more natural gameplay feel.
 - **Works even on partially grown crops** — always replants.
 - **No seeds? No replant!** Requires the player to have the correct seed/item in their inventory.
-- **Optimized for Spigot/Paper 1.21.8** with minimal overhead.
+- **Optimized for Bukkit/Spigot/Paper/Leaf/PufferFish/Purpur 1.21.8** with minimal overhead.
 - **No unnecessary logging** — clean console output.
 - **Bug-free** replant system using scheduled tasks to avoid Spigot overwrite issues.
 
