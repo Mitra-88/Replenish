@@ -11,10 +11,6 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayDeque;
 
-/**
- * Centralized, allocation-friendly queue for delayed replants using a timing wheel.
- * One repeating task drives everything; no per-break tasks are created.
- */
 public final class ReplantQueue {
 
     private static final int WHEEL_BITS = 13;
