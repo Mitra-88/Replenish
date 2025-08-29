@@ -8,18 +8,22 @@ import java.util.*;
 @SuppressWarnings("NullableProblems")
 public class ReplenishCommand implements CommandExecutor, TabCompleter {
     private final ReplenishPlugin plugin;
-    private static final List<String> SUBS = Arrays.asList("status", "toggle", "reload");
+    private static final List<String> SUBCOMMANDS = Arrays.asList("status", "toggle", "reload");
 
-    public ReplenishCommand(ReplenishPlugin plugin) { this.plugin = plugin; }
+    public ReplenishCommand(ReplenishPlugin plugin) {
+        this.plugin = plugin;
+    }
 
-    private static void send(CommandSender s, String msg) { s.sendMessage(ColorUtils.color(msg)); }
+    private static void send(CommandSender sender, String message) {
+        sender.sendMessage(ColorUtils.color(message));
+    }
 
     private static String usage(String base) {
         return "&7Usage: &e/" + base + " &fstatus|toggle|reload";
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             send(sender, usage(label));
             return true;
@@ -29,11 +33,11 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "toggle" -> {
                 if (!sender.hasPermission("replenish.toggle")) { send(sender, "&cYou don’t have permission."); return true; }
-                boolean now = !plugin.isEnabledGlobally();
-                plugin.getConfig().set("enabled", now);
+                boolean nowEnabled = !plugin.isEnabledGlobally();
+                plugin.getConfig().set("enabled", nowEnabled);
                 plugin.saveConfig();
                 plugin.reloadLocalConfig();
-                send(sender, "&7Global: " + (now ? "&aON" : "&cOFF"));
+                send(sender, "&7Global: " + (nowEnabled ? "&aON" : "&cOFF"));
                 return true;
             }
             case "reload" -> {
@@ -45,7 +49,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
             case "status" -> {
                 if (!sender.hasPermission("replenish.status")) { send(sender, "&cYou don’t have permission."); return true; }
 
-                var cfg = plugin.cfg();
+                var cfg = plugin.getConfigCache();
 
                 send(sender, "&6&lReplenish &7v" + plugin.getDescription().getVersion());
                 send(sender, "&8-----------------");
@@ -80,10 +84,10 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            String p = args[0].toLowerCase(Locale.ROOT);
-            return SUBS.stream().filter(s -> s.startsWith(p)).toList();
+            String prefix = args[0].toLowerCase(Locale.ROOT);
+            return SUBCOMMANDS.stream().filter(s -> s.startsWith(prefix)).toList();
         }
         return Collections.emptyList();
     }

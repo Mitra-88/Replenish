@@ -13,22 +13,22 @@ import java.util.Map;
 public final class DropPickupManager {
     private DropPickupManager() {}
 
-    public static void giveToPlayerOrDrop(Player player, Location dropLoc, Collection<ItemStack> drops) {
+    public static void giveToPlayerOrDrop(Player player, Location dropLocation, Collection<ItemStack> drops) {
         if (player == null || drops == null || drops.isEmpty()) return;
 
-        final PlayerInventory inv = player.getInventory();
-        final World world = dropLoc.getWorld();
+        PlayerInventory inventory = player.getInventory();
+        World world = dropLocation.getWorld();
         boolean anyAdded = false;
 
         for (ItemStack stack : drops) {
             if (stack == null || stack.getAmount() <= 0) continue;
-            final Map<Integer, ItemStack> leftovers = inv.addItem(stack);
+            Map<Integer, ItemStack> leftovers = inventory.addItem(stack);
             if (leftovers.isEmpty()) {
                 anyAdded = true;
             } else if (world != null) {
                 for (ItemStack leftover : leftovers.values()) {
                     if (leftover == null || leftover.getAmount() <= 0) continue;
-                    world.dropItemNaturally(dropLoc, leftover);
+                    world.dropItemNaturally(dropLocation, leftover);
                 }
             }
         }
@@ -39,9 +39,9 @@ public final class DropPickupManager {
     }
 
     public static Location centeredDropLocation(Location target) {
-        World w = target.getWorld();
+        World world = target.getWorld();
         Location out = new Location(
-                w,
+                world,
                 target.getBlockX() + 0.5,
                 target.getBlockY() + 0.2,
                 target.getBlockZ() + 0.5

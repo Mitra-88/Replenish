@@ -14,157 +14,149 @@ import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
+import org.bukkit.event.*;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.*;
 
 public class ReplenishListener implements Listener {
 
     private final ReplenishPlugin plugin;
-    private final AgeMetaRegistry ages;
+    private final AgeMetaRegistry ageMetaRegistry;
 
-    private static final Set<Material> SUPPORTED = EnumSet.of(
+    private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
             Material.WHEAT, Material.CARROTS, Material.POTATOES,
             Material.NETHER_WART, Material.COCOA
     );
 
-    private static final BlockFace[] HORIZ = {
+    private static final BlockFace[] HORIZONTAL_FACES = {
             BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
     };
 
-    private static final EnumSet<Material> HOES = EnumSet.of(
+    private static final EnumSet<Material> HOE_TOOLS = EnumSet.of(
             Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE
     );
-    private static final EnumSet<Material> AXES = EnumSet.of(
+    private static final EnumSet<Material> AXE_TOOLS = EnumSet.of(
             Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
     );
 
-    private static final EnumSet<Material> JUNGLE_ANCHORS = EnumSet.of(
+    private static final EnumSet<Material> JUNGLE_ANCHOR_BLOCKS = EnumSet.of(
             Material.JUNGLE_LOG, Material.STRIPPED_JUNGLE_LOG,
             Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD
     );
 
-    public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ages) {
+    public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ageMetaRegistry) {
         this.plugin = plugin;
-        this.ages = ages;
+        this.ageMetaRegistry = ageMetaRegistry;
     }
 
-    @EventHandler public void onClick(InventoryClickEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
-    @EventHandler public void onDrag(InventoryDragEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
-    @EventHandler public void onOpen(InventoryOpenEvent e) { if (e.getPlayer() instanceof Player p) SeedIndex.invalidate(p); }
-    @EventHandler public void onClose(InventoryCloseEvent e) { if (e.getPlayer() instanceof Player p) SeedIndex.invalidate(p); }
-    @EventHandler public void onSwap(PlayerSwapHandItemsEvent e) { SeedIndex.invalidate(e.getPlayer()); }
-    @EventHandler public void onPickup(EntityPickupItemEvent e) { if (e.getEntity() instanceof Player p) SeedIndex.invalidate(p); }
-    @EventHandler public void onDrop(PlayerDropItemEvent e) { SeedIndex.invalidate(e.getPlayer()); }
+    @EventHandler public void onClick(InventoryClickEvent event) { if (event.getWhoClicked() instanceof Player player) SeedIndex.invalidate(player); }
+    @EventHandler public void onDrag(InventoryDragEvent event) { if (event.getWhoClicked() instanceof Player player) SeedIndex.invalidate(player); }
+    @EventHandler public void onOpen(InventoryOpenEvent event) { if (event.getPlayer() instanceof Player player) SeedIndex.invalidate(player); }
+    @EventHandler public void onClose(InventoryCloseEvent event) { if (event.getPlayer() instanceof Player player) SeedIndex.invalidate(player); }
+    @EventHandler public void onSwap(PlayerSwapHandItemsEvent event) { SeedIndex.invalidate(event.getPlayer()); }
+    @EventHandler public void onPickup(EntityPickupItemEvent event) { if (event.getEntity() instanceof Player player) SeedIndex.invalidate(player); }
+    @EventHandler public void onDrop(PlayerDropItemEvent event) { SeedIndex.invalidate(event.getPlayer()); }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
-    public void onBreak(BlockBreakEvent e) {
-        Player p = e.getPlayer();
-        if (p.getGameMode() == GameMode.CREATIVE) return;
+    public void onBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.CREATIVE) return;
 
-        ReplenishPlugin.ConfigCache cfg = plugin.cfg();
-        if (!cfg.enabled) return;
+        ReplenishPlugin.ConfigCache config = plugin.getConfigCache();
+        if (!config.enabled) return;
 
-        Block block = e.getBlock();
+        Block block = event.getBlock();
         Material cropType = block.getType();
-        if (!SUPPORTED.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
+        if (!SUPPORTED_CROPS.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
-        Material tool = p.getInventory().getItemInMainHand().getType();
-        boolean hasRequired = switch (cropType) {
-            case COCOA -> AXES.contains(tool);
-            case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOES.contains(tool);
+        Material toolInHandType = player.getInventory().getItemInMainHand().getType();
+        boolean hasRequiredTool = switch (cropType) {
+            case COCOA -> AXE_TOOLS.contains(toolInHandType);
+            case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOE_TOOLS.contains(toolInHandType);
             default -> true;
         };
-        if (!hasRequired) return;
+        if (!hasRequiredTool) return;
 
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
         } else {
-            Material underType = block.getRelative(BlockFace.DOWN).getType();
+            Material belowType = block.getRelative(BlockFace.DOWN).getType();
             if (cropType == Material.NETHER_WART) {
-                if (underType != Material.SOUL_SAND) return;
-            } else if (underType != Material.FARMLAND) {
+                if (belowType != Material.SOUL_SAND) return;
+            } else if (belowType != Material.FARMLAND) {
                 return;
             }
         }
 
-        BlockData preData = block.getBlockData();
+        BlockData originalBlockData = block.getBlockData();
         int originalAge = 0;
         boolean wasMature = false;
-        if (preData instanceof Ageable a) {
-            int maxAge = ages.get(cropType).maxAge;
-            originalAge = a.getAge();
+        if (originalBlockData instanceof Ageable ageable) {
+            int maxAge = ageMetaRegistry.get(cropType).maximumAge;
+            originalAge = ageable.getAge();
             wasMature = maxAge > 0 && originalAge >= maxAge;
         }
         int replantedAge = wasMature ? 0 : originalAge;
 
-        Material seedMat = seedFor(cropType);
-        if (wasMature && cfg.requirePlayerSeed) {
-            if (seedMat == null) return;
-            if (!SeedIndex.consume(p, seedMat)) return;
+        Material seedMaterial = seedFor(cropType);
+        if (wasMature && config.requirePlayerSeed) {
+            if (seedMaterial == null) return;
+            if (!SeedIndex.consume(player, seedMaterial)) return;
         }
 
-        e.setDropItems(false);
-        var toolInHand = p.getInventory().getItemInMainHand();
-        Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, p) : Collections.emptyList();
+        event.setDropItems(false);
+        ItemStack toolInHand = player.getInventory().getItemInMainHand();
+        Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
 
-        BlockFace originalCocoaFacing = (cropType == Material.COCOA && preData instanceof Directional d) ? d.getFacing() : null;
-        BlockFace playerFacing = p.getFacing();
+        BlockFace originalCocoaFacing = (cropType == Material.COCOA && originalBlockData instanceof Directional directional) ? directional.getFacing() : null;
+        BlockFace playerFacing = player.getFacing();
 
         block.setType(Material.AIR, false);
 
         if (!drops.isEmpty()) {
-            Location dropLoc = DropPickupManager.centeredDropLocation(block.getLocation());
-            if (cfg.directPickup) {
-                DropPickupManager.giveToPlayerOrDrop(p, dropLoc, drops);
+            Location dropLocation = DropPickupManager.centeredDropLocation(block.getLocation());
+            if (config.directPickup) {
+                DropPickupManager.giveToPlayerOrDrop(player, dropLocation, drops);
             } else {
-                World w = block.getWorld();
-                for (ItemStack d : drops) {
-                    if (d == null || d.getAmount() <= 0) continue;
-                    w.dropItemNaturally(dropLoc, d);
+                World world = block.getWorld();
+                for (ItemStack drop : drops) {
+                    if (drop == null || drop.getAmount() <= 0) continue;
+                    world.dropItemNaturally(dropLocation, drop);
                 }
             }
         }
 
-        int delay = Math.max(1, cfg.replantDelayTicks);
+        int delay = Math.max(1, config.replantDelayTicks);
         if (cropType == Material.COCOA) {
-            BlockFace chosen;
+            BlockFace chosenFacing;
             if (originalCocoaFacing != null && isJungle(block.getRelative(originalCocoaFacing).getType())) {
-                chosen = originalCocoaFacing;
+                chosenFacing = originalCocoaFacing;
             } else if (isJungle(block.getRelative(playerFacing).getType())) {
-                chosen = playerFacing;
+                chosenFacing = playerFacing;
             } else {
-                chosen = findAdjacentJungle(block);
+                chosenFacing = findAdjacentJungle(block);
             }
-            if (chosen != null) {
-                plugin.enqueueReplant(block, Material.COCOA, delay, replantedAge, chosen);
+            if (chosenFacing != null) {
+                plugin.enqueueReplant(block, Material.COCOA, delay, replantedAge, chosenFacing);
             }
         } else {
             plugin.enqueueReplant(block, cropType, delay, replantedAge, null);
         }
 
         if (wasMature) {
-            giveFarmingXp(p, cropType);
+            grantFarmingExperience(player, cropType);
         }
     }
 
-    private void giveFarmingXp(Player p, Material cropType) {
+    private void grantFarmingExperience(Player player, Material cropType) {
         if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
-        SkillsUser user = AuraSkillsApi.get().getUser(p.getUniqueId());
+        SkillsUser user = AuraSkillsApi.get().getUser(player.getUniqueId());
         if (user == null || !user.isLoaded()) return;
         double xp = switch (cropType) {
             case WHEAT -> 3.0;
@@ -176,14 +168,14 @@ public class ReplenishListener implements Listener {
         if (xp > 0) user.addSkillXp(Skills.FARMING, xp);
     }
 
-    private BlockFace findAdjacentJungle(Block b) {
-        for (BlockFace face : HORIZ) {
-            if (isJungle(b.getRelative(face).getType())) return face;
+    private BlockFace findAdjacentJungle(Block block) {
+        for (BlockFace face : HORIZONTAL_FACES) {
+            if (isJungle(block.getRelative(face).getType())) return face;
         }
         return null;
     }
 
-    private boolean isJungle(Material m) { return JUNGLE_ANCHORS.contains(m); }
+    private boolean isJungle(Material material) { return JUNGLE_ANCHOR_BLOCKS.contains(material); }
 
     private static Material seedFor(Material crop) {
         return switch (crop) {
