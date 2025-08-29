@@ -53,8 +53,8 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 send(sender, "&eCore");
                 send(sender, "  &7Enabled: " + (cfg.enabled ? "&aON" : "&cOFF"));
                 send(sender, "  &7Require seed: " + (cfg.requirePlayerSeed ? "&aYes" : "&cNo"));
-                send(sender, "  &7Restrict tools: " + (cfg.restrictToHoesAndAxes ? "&aYes" : "&cNo"));
                 send(sender, "  &7Direct pickup: " + (cfg.directPickup ? "&aYes" : "&cNo"));
+                send(sender, "  &7Tool requirement: &aHoes for crops, Axes for cocoa");
 
                 send(sender, "");
                 send(sender, "&eTuning");

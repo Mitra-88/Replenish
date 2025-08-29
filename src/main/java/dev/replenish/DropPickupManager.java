@@ -12,8 +12,6 @@ import java.util.Map;
 
 public final class DropPickupManager {
     private DropPickupManager() {}
-    private static final ThreadLocal<Location> TMP_LOC_1 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
-    private static final ThreadLocal<Location> TMP_LOC_2 = ThreadLocal.withInitial(() -> new Location(null, 0, 0, 0));
 
     public static void giveToPlayerOrDrop(Player player, Location dropLoc, Collection<ItemStack> drops) {
         if (player == null || drops == null || drops.isEmpty()) return;
@@ -36,18 +34,18 @@ public final class DropPickupManager {
         }
 
         if (anyAdded) {
-            Location soundAt = TMP_LOC_1.get();
-            player.getLocation(soundAt);
-            player.playSound(soundAt, Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
+            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
         }
     }
 
     public static Location centeredDropLocation(Location target) {
-        Location out = TMP_LOC_2.get();
-        out.setWorld(target.getWorld());
-        out.setX(target.getBlockX() + 0.5);
-        out.setY(target.getBlockY() + 0.2);
-        out.setZ(target.getBlockZ() + 0.5);
+        World w = target.getWorld();
+        Location out = new Location(
+                w,
+                target.getBlockX() + 0.5,
+                target.getBlockY() + 0.2,
+                target.getBlockZ() + 0.5
+        );
         out.setYaw(0f);
         out.setPitch(0f);
         return out;

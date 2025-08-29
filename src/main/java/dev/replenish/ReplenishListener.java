@@ -83,15 +83,13 @@ public class ReplenishListener implements Listener {
         Material cropType = block.getType();
         if (!SUPPORTED.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
-        if (cfg.restrictToHoesAndAxes) {
-            Material tool = p.getInventory().getItemInMainHand().getType();
-            boolean ok = switch (cropType) {
-                case COCOA -> AXES.contains(tool);
-                case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOES.contains(tool);
-                default -> true;
-            };
-            if (!ok) return;
-        }
+        Material tool = p.getInventory().getItemInMainHand().getType();
+        boolean hasRequired = switch (cropType) {
+            case COCOA -> AXES.contains(tool);
+            case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOES.contains(tool);
+            default -> true;
+        };
+        if (!hasRequired) return;
 
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
