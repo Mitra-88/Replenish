@@ -9,7 +9,6 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/** Per-player O(1) seed slot cache with lazy refresh + invalidation hooks. */
 public final class SeedIndex {
     private static final WeakHashMap<Player, Map<Material, Integer>> INDEX = new WeakHashMap<>();
 
@@ -25,27 +24,23 @@ public final class SeedIndex {
         // Fast path
         if (slot != null && slot >= 0) {
             if (consumeAt(inv, slot, seedMat)) {
-                // still same slot unless stack emptied
                 ItemStack is = inv.getItem(slot);
                 if (is == null || is.getType() != seedMat || is.getAmount() <= 0) {
-                    map.put(seedMat, findSlot(inv, seedMat)); // re-point
+                    map.put(seedMat, findSlot(inv, seedMat));
                 }
                 return true;
             }
-            // miss — rebuild fully, then try again
             map.clear();
             map.putAll(buildMap(inv));
             slot = map.get(seedMat);
             if (slot != null && slot >= 0) return consumeAt(inv, slot, seedMat);
         }
 
-        // Offhand special case
         ItemStack off = inv.getItemInOffHand();
         if (off.getType() == seedMat && off.getAmount() > 0) {
             int amt = off.getAmount();
             if (amt > 1) { off.setAmount(amt - 1); inv.setItemInOffHand(off); }
             else { inv.setItemInOffHand(null); }
-            // update index after consumption
             map.put(seedMat, findSlot(inv, seedMat));
             return true;
         }

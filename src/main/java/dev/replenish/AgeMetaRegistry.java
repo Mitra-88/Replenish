@@ -8,11 +8,10 @@ import org.bukkit.plugin.Plugin;
 import java.util.EnumMap;
 import java.util.Map;
 
-/** Caches ageability + max ages once at startup. */
 public final class AgeMetaRegistry {
     public static final class AgeMeta {
         public final boolean ageable;
-        public final int maxAge; // 0 if not ageable
+        public final int maxAge;
         AgeMeta(boolean a, int m) { this.ageable = a; this.maxAge = m; }
     }
 
@@ -29,7 +28,6 @@ public final class AgeMetaRegistry {
                     meta.put(m, new AgeMeta(false, 0));
                 }
             } catch (Throwable ignored) {
-                // not placeable or weird — skip
             }
         }
     }

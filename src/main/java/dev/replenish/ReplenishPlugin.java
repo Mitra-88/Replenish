@@ -54,7 +54,7 @@ public class ReplenishPlugin extends JavaPlugin {
         saveConfig();
 
         ConfigCache newCache = ConfigCache.from(c);
-        cacheRef.set(newCache); // atomic COW
+        cacheRef.set(newCache);
 
         if (replantQueue != null) {
             replantQueue.stop();

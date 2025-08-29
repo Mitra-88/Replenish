@@ -10,7 +10,6 @@ import org.bukkit.inventory.PlayerInventory;
 import java.util.Collection;
 import java.util.Map;
 
-/** Avoids hot allocations by reusing mutable Location objects per thread. */
 public final class DropPickupManager {
     private DropPickupManager() {}
 
@@ -39,14 +38,12 @@ public final class DropPickupManager {
         }
 
         if (anyAdded) {
-            // use the "fill into" overload to avoid new Location
             Location soundAt = TMP_LOC_1.get();
             player.getLocation(soundAt);
             player.playSound(soundAt, Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
         }
     }
 
-    /** Utility to compute a centered drop location without new objects. */
     public static Location centeredDropLocation(Location target) {
         Location out = TMP_LOC_2.get();
         out.setWorld(target.getWorld());

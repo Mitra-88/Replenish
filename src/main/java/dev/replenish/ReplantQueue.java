@@ -34,12 +34,11 @@ public final class ReplantQueue {
     private final AgeMetaRegistry ages;
     private final int maxPerTick;
 
-    // Flat wheel: head indices; -1 = empty
     private final int[] wheelHeads = new int[WHEEL_SIZE];
 
     // Pool storage
     private Job[] pool = new Job[2048];
-    private int freeHead = -1; // singly-linked free list using pool[i].next
+    private int freeHead = -1;
     private int poolSize = 0;
 
     private int cursor = 0;
@@ -53,7 +52,6 @@ public final class ReplantQueue {
 
         Arrays.fill(wheelHeads, -1);
 
-        // prime the pool with actual Job instances
         primePool();
     }
 
@@ -71,7 +69,6 @@ public final class ReplantQueue {
 
         Arrays.fill(wheelHeads, -1);
 
-        // reset and re-prime pool to a clean state
         pool = new Job[2048];
         freeHead = -1;
         poolSize = 0;
@@ -88,7 +85,6 @@ public final class ReplantQueue {
         Job j = pool[idx];
         j.set(block, plantMat, targetAge, cocoaFacing);
 
-        // push-front into slot list
         j.next = wheelHeads[slot];
         wheelHeads[slot] = idx;
     }
@@ -112,7 +108,7 @@ public final class ReplantQueue {
             processed++;
         }
 
-        wheelHeads[cursor] = head; // remaining (if any)
+        wheelHeads[cursor] = head;
         cursor = (cursor + 1) & WHEEL_MASK;
     }
 
@@ -154,7 +150,6 @@ public final class ReplantQueue {
         }
     }
 
-    // ----- pool helpers -----
     private void ensureCapacity(int need) {
         if (pool.length >= need) return;
         Job[] n = new Job[Math.max(need, pool.length * 2)];
@@ -162,22 +157,20 @@ public final class ReplantQueue {
         pool = n;
     }
 
-    /** allocate N Job objects and link them into the free list */
     private void primePool() {
         ensureCapacity(1024);
-        // create jobs [poolSize … n-1] and release them
         int target = Math.max(poolSize, 1024);
         for (int i = poolSize; i < target; i++) {
             pool[i] = new Job();
-            release(i); // safe now — j not null
+            release(i);
         }
         poolSize = Math.max(poolSize, target);
     }
 
     private void release(int idx) {
         Job j = pool[idx];
-        if (j != null) j.clear();           // null-safe now
-        else pool[idx] = new Job();         // make sure slot is usable next time
+        if (j != null) j.clear();
+        else pool[idx] = new Job();
         pool[idx].next = freeHead;
         freeHead = idx;
     }
@@ -189,7 +182,6 @@ public final class ReplantQueue {
             pool[idx].next = -1;
             return idx;
         }
-        // no free nodes: create a new one at the end
         ensureCapacity(poolSize + 1);
         if (pool[poolSize] == null) pool[poolSize] = new Job();
         return poolSize++;

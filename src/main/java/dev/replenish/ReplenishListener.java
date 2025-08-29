@@ -63,7 +63,6 @@ public class ReplenishListener implements Listener {
         this.ages = ages;
     }
 
-    // -------- Inventory change -> invalidate seed cache (fixed events) --------
     @EventHandler public void onClick(InventoryClickEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
     @EventHandler public void onDrag(InventoryDragEvent e) { if (e.getWhoClicked() instanceof Player p) SeedIndex.invalidate(p); }
     @EventHandler public void onOpen(InventoryOpenEvent e) { if (e.getPlayer() instanceof Player p) SeedIndex.invalidate(p); }
@@ -72,10 +71,8 @@ public class ReplenishListener implements Listener {
     @EventHandler public void onPickup(EntityPickupItemEvent e) { if (e.getEntity() instanceof Player p) SeedIndex.invalidate(p); }
     @EventHandler public void onDrop(PlayerDropItemEvent e) { SeedIndex.invalidate(e.getPlayer()); }
 
-    // -------- Main crop break logic --------
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent e) {
-        // cheapest exits first
         Player p = e.getPlayer();
         if (p.getGameMode() == GameMode.CREATIVE) return;
 
@@ -91,7 +88,6 @@ public class ReplenishListener implements Listener {
             if (!ALLOWED_TOOLS.contains(toolType)) return;
         }
 
-        // surface / anchor validation
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
         } else {
@@ -103,7 +99,6 @@ public class ReplenishListener implements Listener {
             }
         }
 
-        // maturity (use cached max age)
         BlockData preData = block.getBlockData();
         int originalAge = 0;
         boolean wasMature = false;
@@ -114,14 +109,12 @@ public class ReplenishListener implements Listener {
         }
         int replantedAge = wasMature ? 0 : originalAge;
 
-        // seed requirement (O(1) via SeedIndex)
         Material seedMat = seedFor(cropType);
         if (wasMature && cfg.requirePlayerSeed) {
             if (seedMat == null) return;
             if (!SeedIndex.consume(p, seedMat)) return;
         }
 
-        // prevent vanilla drops; we’ll handle them
         e.setDropItems(false);
         var tool = p.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = (wasMature || cfg.allowImmatureDrops) ? block.getDrops(tool, p) : Collections.emptyList();

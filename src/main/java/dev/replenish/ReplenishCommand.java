@@ -13,7 +13,6 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
 
     public ReplenishCommand(ReplenishPlugin plugin) { this.plugin = plugin; }
 
-    // ---------- helpers: styling ----------
     private static String line() {
         return ChatColor.DARK_GRAY + "-------------------------------------------";
     }
@@ -41,13 +40,11 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     }
 
     private static String numTint(int value) {
-        // green is "good or better", yellow is "okay..", red otherwise
         ChatColor c = (value >= 32) ? ChatColor.GREEN : (value >= 8 ? ChatColor.YELLOW : ChatColor.RED);
         return label("Max replants/tick") + c + value;
     }
 
     private static String numTintLowIsGood(int value) {
-        // green when <= goodMax, yellow when <= okayMax, else red
         ChatColor c = (value <= 2) ? ChatColor.GREEN : (value <= 10 ? ChatColor.YELLOW : ChatColor.RED);
         return label("Replant delay (ticks)") + c + value;
     }
@@ -97,11 +94,9 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 var cfg = plugin.cfg();
                 String ver = plugin.getDescription().getVersion();
 
-                // HEADER
                 sender.sendMessage(line());
                 sender.sendMessage(header("v" + ver));
 
-                // GLOBAL
                 sender.sendMessage(label("Enabled") + onOff(cfg.enabled) + ChatColor.DARK_GRAY + "  " + chipBool(cfg.enabled)
                         + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "QoL " + chipBool(cfg.qolMode));
                 sender.sendMessage(label("Require seed") + onOff(cfg.requirePlayerSeed) + ChatColor.DARK_GRAY + "  "
@@ -109,14 +104,12 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(label("Direct pickup") + onOff(cfg.directPickup) + ChatColor.DARK_GRAY + "  "
                         + ChatColor.GRAY + "Immature drops " + chipBool(cfg.allowImmatureDrops));
 
-                // TUNABLES
                 sender.sendMessage(ChatColor.GOLD + "Tuning");
                 sender.sendMessage("  " + numTintLowIsGood(cfg.replantDelayTicks)
                         + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "→ lower is faster");
                 sender.sendMessage("  " + numTint(cfg.maxReplantsPerTick)
                         + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "→ higher = more throughput");
 
-                // CROPS (emoji + chips)
                 boolean w = plugin.isCropEnabled(Material.WHEAT);
                 boolean c = plugin.isCropEnabled(Material.CARROTS);
                 boolean p = plugin.isCropEnabled(Material.POTATOES);
@@ -130,7 +123,6 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("  " + crop("🔥", "nether_wart", n) + ChatColor.GRAY + "  ·  "
                         + crop("🍫", "cocoa", co));
 
-                // LEGEND
                 sender.sendMessage(ChatColor.DARK_GRAY + "—— "
                         + ChatColor.GRAY + "Legend: " + ChatColor.BLACK + "[" + ChatColor.GREEN + "✓" + ChatColor.BLACK + "]"
                         + ChatColor.GRAY + " enabled, " + ChatColor.BLACK + "[" + ChatColor.RED + "✗" + ChatColor.BLACK + "]"
