@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ReplenishPlugin extends JavaPlugin {
 
     private final AtomicReference<ConfigCache> cacheRef = new AtomicReference<>(new ConfigCache());
-    private ReplantQueue replantQueue;
+    private volatile ReplantQueue replantQueue;
     private AgeMetaRegistry ageMeta;
 
     @Override
@@ -64,11 +64,10 @@ public class ReplenishPlugin extends JavaPlugin {
     }
 
     public boolean isEnabledGlobally() { return cfg().enabled; }
-    public boolean isCropEnabled(Material crop) { return cfg().cropEnabled.getOrDefault(crop, true); }
+    public boolean isCropEnabled(Material crop) { return crop != null && cfg().cropEnabled.getOrDefault(crop, true); }
     public ConfigCache cfg() { return cacheRef.get(); }
     public AgeMetaRegistry ages() { return ageMeta; }
 
-    // Forwarder so listeners always hit the current queue instance
     public void enqueueReplant(org.bukkit.block.Block block,
                                org.bukkit.Material plantMat,
                                int delayTicks,
