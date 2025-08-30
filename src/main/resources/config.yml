@@ -1,6 +1,5 @@
 enabled: true
 requirePlayerSeed: true
-restrictToHoesAndAxes: true
 directPickup: true
 
 # ~15ms default → 1 tick
