@@ -5,8 +5,7 @@ import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.plugin.Plugin;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.*;
 
 public final class AgeMetaRegistry {
 
@@ -22,17 +21,22 @@ public final class AgeMetaRegistry {
 
     private static final AgeMeta DEFAULT = new AgeMeta(false, 0);
 
+    private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
+            Material.WHEAT,
+            Material.CARROTS,
+            Material.POTATOES,
+            Material.NETHER_WART,
+            Material.COCOA
+    );
+
     private final Map<Material, AgeMeta> metadataByMaterial = new EnumMap<>(Material.class);
 
     public AgeMetaRegistry(Plugin plugin) {
-        for (Material material : Material.values()) {
-            if (!material.isBlock()) continue;
+        for (Material material : SUPPORTED_CROPS) {
             try {
-                BlockData blockData = plugin.getServer().createBlockData(material);
-                if (blockData instanceof Ageable ageable) {
+                BlockData data = plugin.getServer().createBlockData(material);
+                if (data instanceof Ageable ageable) {
                     metadataByMaterial.put(material, new AgeMeta(true, ageable.getMaximumAge()));
-                } else {
-                    metadataByMaterial.put(material, DEFAULT);
                 }
             } catch (Throwable ignored) {
                 plugin.getLogger().fine("Age meta scan skipped for " + material + ": " + ignored.getMessage());
