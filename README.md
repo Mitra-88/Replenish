@@ -7,15 +7,12 @@ When enabled, it **automatically replants crops** after harvesting, so players d
 
 ## ✨ Features
 - **Automatic replanting** for:
-    - Wheat
-    - Potatoes
-    - Carrots
-    - Nether Wart
+    - Wheat, Potatoes, Carrots, Nether Wart (requires hoe)
     - Cocoa Beans (requires axe)
 - **Fortune I/II/III respected** via vanilla/Bukkit drop calc.
 - **Global toggle** (permission-gated) to enable/disable server-wide.
 - **Configurable per-crop toggles** in `config.yml` (for the five supported crops).
-- **Replant delay**: defaults to **1 tick (~50ms)** for a smoother feel.
+- **Replant delay**: defaults to **1 tick (~15ms)** for a smoother feel.
 - **Partial crops handled** — breaking an immature crop replants it at the same age.
 - **Seed requirement (configurable)** — by default, **mature** crops only replant if the player has the correct seed/item in inventory.
 - **Lightweight**: minimal overhead, clean console output.
