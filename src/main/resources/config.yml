@@ -14,3 +14,9 @@ crops:
   potatoes: true
   nether_wart: true
   cocoa: true
+
+cubeHarvest:
+  enabled: false       # OFF by default
+  sameTypeOnly: true   # only break same crop type as the block you harvested
+  radius: 1            # 1 => 3x3x3
+  hardCap: 26          # safety cap (max extra blocks per harvest)

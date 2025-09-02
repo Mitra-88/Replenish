@@ -19,7 +19,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     }
 
     private static String usage(String base) {
-        return "&7Usage: &e/" + base + " &fstatus|toggle|reload";
+        return "&7Usage: &e/" + base + " &fstatus | toggle| reload";
     }
 
     @Override
@@ -72,6 +72,13 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 send(sender, "  &7Potatoes: " + (plugin.isCropEnabled(Material.POTATOES) ? "&a✓" : "&c✗"));
                 send(sender, "  &7Nether Wart: " + (plugin.isCropEnabled(Material.NETHER_WART) ? "&a✓" : "&c✗"));
                 send(sender, "  &7Cocoa: " + (plugin.isCropEnabled(Material.COCOA) ? "&a✓" : "&c✗"));
+
+                send(sender, "");
+                send(sender, "&eGreat Harvest Mode");
+                send(sender, "  &7Enabled: " + (cfg.cubeHarvestEnabled ? "&aON" : "&cOFF"));
+                send(sender, "  &7Same type only: " + (cfg.cubeHarvestSameTypeOnly ? "&aYes" : "&cNo"));
+                send(sender, "  &7Radius: &f" + cfg.cubeHarvestRadius + " &8(1 => 3x3x3)");
+                send(sender, "  &7Hard cap: &f" + cfg.cubeHarvestHardCap + " &8(max extra blocks)");
 
                 send(sender, "&8-----------------");
                 return true;

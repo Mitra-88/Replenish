@@ -1,13 +1,7 @@
 package dev.replenish;
 
-import dev.aurelium.auraskills.api.AuraSkillsApi;
-import dev.aurelium.auraskills.api.skill.Skills;
-import dev.aurelium.auraskills.api.user.SkillsUser;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
@@ -21,6 +15,9 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.util.*;
 
@@ -111,7 +108,7 @@ public class ReplenishListener implements Listener {
         }
 
         event.setDropItems(false);
-        ItemStack toolInHand = player.getInventory().getItemInMainHand();
+        var toolInHand = player.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
 
         BlockFace originalCocoaFacing = (cropType == Material.COCOA && originalBlockData instanceof Directional directional) ? directional.getFacing() : null;
@@ -152,11 +149,14 @@ public class ReplenishListener implements Listener {
         if (wasMature) {
             grantFarmingExperience(player, cropType);
         }
+
+        // 🔥 NEW: fan-out harvest (3x3x3), controlled by config and hard-capped
+        CubeBreaker.harvestAroundCenter(plugin, ageMetaRegistry, player, block, cropType, replantedAge);
     }
 
     private void grantFarmingExperience(Player player, Material cropType) {
         if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
-        SkillsUser user = AuraSkillsApi.get().getUser(player.getUniqueId());
+        var user = dev.aurelium.auraskills.api.AuraSkillsApi.get().getUser(player.getUniqueId());
         if (user == null || !user.isLoaded()) return;
         double xp = switch (cropType) {
             case WHEAT -> 3.0;
@@ -165,7 +165,7 @@ public class ReplenishListener implements Listener {
             case COCOA -> 4.0;
             default -> 0;
         };
-        if (xp > 0) user.addSkillXp(Skills.FARMING, xp);
+        if (xp > 0) user.addSkillXp(dev.aurelium.auraskills.api.skill.Skills.FARMING, xp);
     }
 
     private BlockFace findAdjacentJungle(Block block) {
