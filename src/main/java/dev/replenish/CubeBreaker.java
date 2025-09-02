@@ -12,10 +12,6 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Collection;
 import java.util.EnumSet;
 
-/**
- * Ultra-lean 3x3x3 crop breaker. Off by default (gated by config).
- * No event recursion, no allocations in the hot path, hard-capped fanout.
- */
 final class CubeBreaker {
 
     private static final EnumSet<Material> SUPPORTED_CROPS = EnumSet.of(
@@ -36,7 +32,6 @@ final class CubeBreaker {
             BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
     };
 
-    // precomputed 3x3x3 offsets (radius=1), excluding center
     private static final int[][] OFFSETS_R1;
     static {
         OFFSETS_R1 = new int[26][3];
@@ -62,14 +57,13 @@ final class CubeBreaker {
             Player player,
             Block center,
             Material centerType,
-            int replantedAgeOfCenter // not used directly; signature parity
+            int replantedAgeOfCenter
     ) {
         var cfg = plugin.getConfigCache();
         if (!cfg.cubeHarvestEnabled) return;
-        if (cfg.cubeHarvestRadius <= 0) return; // radius 0 => disabled area
+        if (cfg.cubeHarvestRadius <= 0) return;
 
         final World world = center.getWorld();
-        if (world == null) return;
 
         final Material tool = player.getInventory().getItemInMainHand().getType();
         final boolean hoes = HOE_TOOLS.contains(tool);
@@ -95,7 +89,6 @@ final class CubeBreaker {
             if (sameTypeOnly && type != centerType) continue;
             if (!canUseToolFor(type, hoes, axes)) continue;
 
-            // substrate / anchor checks
             if (type == Material.COCOA) {
                 if (findAdjacentJungle(b) == null) continue;
             } else {
@@ -107,7 +100,6 @@ final class CubeBreaker {
                 }
             }
 
-            // original state
             BlockData originalData = b.getBlockData();
             int originalAge = 0;
             boolean wasMature = false;
@@ -118,23 +110,19 @@ final class CubeBreaker {
             }
             int replantedAge = wasMature ? 0 : originalAge;
 
-            // seed gate
             Material seed = seedFor(type);
             if (wasMature && plugin.getConfigCache().requirePlayerSeed) {
                 if (seed == null) continue;
                 if (!SeedIndex.consume(player, seed)) continue;
             }
 
-            // drops with player context (looting/fortune/etc)
             ItemStack toolStack = player.getInventory().getItemInMainHand();
             Collection<ItemStack> drops = wasMature ? b.getDrops(toolStack, player) : java.util.Collections.emptyList();
 
-            // cocoa facing
             BlockFace cocoaFacing =
                     (type == Material.COCOA && originalData instanceof Directional d) ? d.getFacing() : null;
             BlockFace playerFacing = player.getFacing();
 
-            // break without recursive events
             b.setType(Material.AIR, false);
 
             if (!drops.isEmpty()) {
@@ -149,7 +137,6 @@ final class CubeBreaker {
                 }
             }
 
-            // replant
             int delay = Math.max(1, plugin.getConfigCache().replantDelayTicks);
             if (type == Material.COCOA) {
                 BlockFace chosen;
@@ -167,14 +154,11 @@ final class CubeBreaker {
                 plugin.enqueueReplant(b, type, delay, replantedAge, null);
             }
 
-            // skills xp
             if (wasMature) grantFarmingExperience(player, type);
 
             if (++broken >= hardCap) break;
         }
     }
-
-    // ===== helpers =====
 
     private static boolean canUseToolFor(Material crop, boolean hoes, boolean axes) {
         return switch (crop) {
