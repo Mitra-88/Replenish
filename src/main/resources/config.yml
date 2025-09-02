@@ -16,7 +16,10 @@ crops:
   cocoa: true
 
 cubeHarvest:
-  enabled: false       # OFF by default
-  sameTypeOnly: true   # only break same crop type as the block you harvested
-  radius: 1            # 1 => 3x3x3
-  hardCap: 26          # safety cap (max extra blocks per harvest)
+  enabled: false
+  # only break same crop type as the block you harvested
+  sameTypeOnly: true
+  # 1 => 3x3x3
+  radius: 1
+  # safety cap (max extra blocks per harvest)
+  hardCap: 26
