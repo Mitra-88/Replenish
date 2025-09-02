@@ -1,6 +1,5 @@
 package dev.replenish;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -147,25 +146,17 @@ public class ReplenishListener implements Listener {
         }
 
         if (wasMature) {
-            grantFarmingExperience(player, cropType);
+            double xp = switch (cropType) {
+                case WHEAT -> 3.0;
+                case CARROTS, POTATOES -> 3.5;
+                case NETHER_WART -> 3.7;
+                case COCOA -> 4.0;
+                default -> 0;
+            };
+            AuraSkillsCompat.grantFarmingXp(player, xp);
         }
 
-        // 🔥 NEW: fan-out harvest (3x3x3), controlled by config and hard-capped
-        CubeBreaker.harvestAroundCenter(plugin, ageMetaRegistry, player, block, cropType, replantedAge);
-    }
-
-    private void grantFarmingExperience(Player player, Material cropType) {
-        if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
-        var user = dev.aurelium.auraskills.api.AuraSkillsApi.get().getUser(player.getUniqueId());
-        if (user == null || !user.isLoaded()) return;
-        double xp = switch (cropType) {
-            case WHEAT -> 3.0;
-            case CARROTS, POTATOES -> 3.5;
-            case NETHER_WART -> 3.7;
-            case COCOA -> 4.0;
-            default -> 0;
-        };
-        if (xp > 0) user.addSkillXp(dev.aurelium.auraskills.api.skill.Skills.FARMING, xp);
+        CubeBreaker.harvestAroundCenter(plugin, ageMetaRegistry, player, block, cropType);
     }
 
     private BlockFace findAdjacentJungle(Block block) {

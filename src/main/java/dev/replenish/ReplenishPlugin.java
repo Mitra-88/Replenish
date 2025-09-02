@@ -66,7 +66,6 @@ public class ReplenishPlugin extends JavaPlugin {
     public boolean isEnabledGlobally() { return getConfigCache().enabled; }
     public boolean isCropEnabled(Material crop) { return crop != null && getConfigCache().cropEnabled.getOrDefault(crop, true); }
     public ConfigCache getConfigCache() { return configCacheRef.get(); }
-    public AgeMetaRegistry getAgeMetadataRegistry() { return ageMetaRegistry; }
 
     public void enqueueReplant(org.bukkit.block.Block block,
                                org.bukkit.Material plantMaterial,

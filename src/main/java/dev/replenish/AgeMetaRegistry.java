@@ -33,6 +33,7 @@ public final class AgeMetaRegistry {
 
     public AgeMetaRegistry(Plugin plugin) {
         for (Material material : SUPPORTED_CROPS) {
+            //noinspection CatchMayIgnoreException
             try {
                 BlockData data = plugin.getServer().createBlockData(material);
                 if (data instanceof Ageable ageable) {

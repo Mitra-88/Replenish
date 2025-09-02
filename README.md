@@ -1,47 +1,78 @@
-# Replenish 🌱 — Auto‑Replant that Actually Feels Good
+# Replenish 🌾 – auto-replant QoL for 1.20+
 
-A tiny, fast Bukkit/Spigot/Paper (1.21+) plugin that makes farming feel *buttery*. Harvest your crops, they pop right back in. Seeds get handled, drops land where they should, and your inventory isn’t chaos. Built to be friendly for players, admins, and the server TPS.
-
-> TL;DR: break crops → they auto‑replant → items go to your inventory (or drop neatly) → everyone’s happy.
-
----
-
-## ✨ Features
-
-* **Auto‑Replant** for core crops (wheat, carrots, potatoes, nether wart, cocoa). Toggle per‑crop.
-* **Direct Pickup** mode: send drops straight into the player’s inventory when possible.
-* **Seed Requirement**: make players keep seeds on them to replant (or turn it off for chill servers).
-* **Smart Drop Logic**: if the inventory’s full, items drop *cleanly* at a centered block location.
-* **Gentle Feedback**: a subtle pickup sound confirms items actually got added.
-* **Performance‑aware**: tune replant delay and per‑tick caps so big farms don’t lag the party.
-* **Zero Command Setup**: enable, drop in, tweak config, done.
+Small, fast, crop QoL plugin for Bukkit/Spigot/Paper 1.20+.
+Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature crop, it replants itself. Keeps things snappy, respects tools, and plays nice with AuraSkills.
 
 ---
 
-## 🚀 Quick Start
+## What it does
 
-1. **Drop the jar** into your server’s `plugins/` folder.
-2. **Restart** the server.
-3. **Edit** the generated config at `plugins/Replenish/config.yml`.
-4. **/reload** or restart again if you changed settings.
-
-You’re now vibing with auto‑replant. 🌾
+* ✅ **Auto-replants** Wheat, Carrots, Potatoes, Nether Wart, and Cocoa
+* 🧠 **Age-aware**: if a crop isn’t fully grown, it goes back down at the **same age**
+* 🎒 **Seed requirement (configurable)**: optionally consumes 1 seed from the player (main inv or off-hand)
+* 🧲 **Direct pickup (configurable)**: drops go straight into the player inventory
+* 🪓 **Tool checks**: Hoes for crops, Axes for cocoa. No cheese.
+* 🧱 **Cocoa-aware**: finds jungle wood and keeps the correct facing on replant
+* 🧊 **Great Harvest Mode** (3×3×3 fan-out): break one, it sweeps nearby crops too (safeguarded + configurable)
+* 💎 **Fortune-respecting**: uses Bukkit drops with your tool’s enchants
+* ⚡️ **High-throughput**: time-wheel queue, rate-limited per tick so servers don’t melt
+* 🧪 **AuraSkills** XP: gives Farming XP per crop type when you harvest mature plants
 
 ---
 
-## ⚙️ Config (defaults)
+## Quick install
 
-Here’s the out‑of‑the‑box config so you can copy/paste and tweak:
+1. Drop the JAR into `plugins/`
+2. Start the server once to generate config
+3. Tweak `plugins/Replenish/config.yml` if you want
+4. Done. Go farm.
 
-```yml
+---
+
+## Default behavior (no config edits)
+
+* Breaking a **mature** crop:
+
+    * Replants at age **0**
+    * Consumes **1 seed** from your inventory (or off-hand) if `requirePlayerSeed` is `true`
+    * Drops go straight to you if `directPickup` is `true`
+    * Gives AuraSkills Farming XP (Wheat 3.0; Carrots/Potatoes 3.5; Wart 3.7; Cocoa 4.0)
+* Breaking an **immature** crop:
+
+    * Replants at the **same age** (no seed needed)
+    * No extra XP
+
+---
+
+## Commands & permissions
+
+`/replenish status` – shows current settings
+`/replenish toggle` – flips global enable/disable
+`/replenish reload` – reloads config
+
+Permissions:
+
+* `replenish.status` (default: **true**)
+* `replenish.use` (default: **op**)
+* `replenish.toggle` (default: **op**)
+* `replenish.reload` (default: **op**)
+* `replenish.*` (default: **op**)
+
+> The command node is declared as `replenish.use`, but each sub-permission gates its subcommand.
+
+---
+
+## Config (short + sane)
+
+```yaml
 enabled: true
 requirePlayerSeed: true
 directPickup: true
 
-# ~15ms default → 1 tick
+# ~15ms → 1 tick
 replantDelayMs: 15
 
-# cap per-tick replant work; raise if you have headroom
+# replant jobs processed per server tick (bump if server is strong)
 maxReplantsPerTick: 4096
 
 crops:
@@ -50,52 +81,16 @@ crops:
   potatoes: true
   nether_wart: true
   cocoa: true
+
+cubeHarvest:
+  enabled: false
+  sameTypeOnly: true     # only break same crop type as the one you hit
+  radius: 1              # currently operates as 3x3x3 around the center
+  hardCap: 26            # safety cap on extra blocks per harvest
 ```
 
-### What the settings actually do
+**Notes that actually matter:**
 
-* **enabled**: Global on/off switch. Kill switch for troubleshooting.
-* **requirePlayerSeed**: If `true`, players must have seeds in their inventory to replant.
-* **directPickup**: If `true`, try to send drops straight into the player inventory.
-* **replantDelayMs**: Small delay before the replant happens (helps with event ordering + spam control).
-* **maxReplantsPerTick**: Safety cap for how many replant actions can run each tick.
-* **crops.**\*: Toggle individual crop types. If it’s not here, it’s not auto‑replanted.
-
----
-
-## 🧠 How it behaves (Player POV)
-
-* Break a mature crop → it replants automatically.
-* If you’ve got space, the harvest goes into your inventory. You’ll hear a soft pickup sound.
-* No space? Items drop naturally at a neat, centered position so you’re not chasing pixels.
-
----
-
-## 🛠️ Notes for Admins
-
-* **Performance tuning**:
-
-    * Start with the defaults. If you run mega farms, bump `maxReplantsPerTick` slowly until TPS stays butter‑smooth.
-    * `replantDelayMs` can help smooth spikes from large synchronized harvests.
-* **Player experience**:
-
-    * `requirePlayerSeed: true` = survival‑friendly; players still engage with seed economy.
-    * `requirePlayerSeed: false` = relaxed servers / minigames.
-    * `directPickup: true` feels clean and reduces item clutter.
-* **Per‑crop control**: flip off anything that doesn’t fit your meta.
-
----
-
-## 💡 FAQ
-
-**Q: Does it work on Spigot/Paper?**
-Yep. It’s built on the Bukkit API, so Spigot & Paper are good.
-
-**Q: What happens when inventories are full?**
-Drops are placed naturally at a centered, slightly raised position on the block so they’re easy to grab.
-
-**Q: Commands or permissions?**
-None required for basic use. It’s hands‑off by design.
-
-**Q: Will this lag my server?**
-Not if you keep an eye on the caps. Defaults are safe; scale thoughtfully for huge farms.
+* `replantDelayMs` is converted to ticks internally (`replantDelayTicks`).
+* `maxReplantsPerTick` is a **hard throttle** for the replant queue. It’s already high; raise only if your server can handle it.
+* **Cube Harvest** right now is a 3×3×3 sweep per break (the `radius` is present for future expansion; code currently uses the 26-block neighborhood). `hardCap` stops it from going wild.

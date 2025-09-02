@@ -56,8 +56,7 @@ final class CubeBreaker {
             AgeMetaRegistry ageMetaRegistry,
             Player player,
             Block center,
-            Material centerType,
-            int replantedAgeOfCenter
+            Material centerType
     ) {
         var cfg = plugin.getConfigCache();
         if (!cfg.cubeHarvestEnabled) return;
@@ -154,7 +153,16 @@ final class CubeBreaker {
                 plugin.enqueueReplant(b, type, delay, replantedAge, null);
             }
 
-            if (wasMature) grantFarmingExperience(player, type);
+            if (wasMature) {
+                double xp = switch (type) {
+                    case WHEAT -> 3.0;
+                    case CARROTS, POTATOES -> 3.5;
+                    case NETHER_WART -> 3.7;
+                    case COCOA -> 4.0;
+                    default -> 0;
+                };
+                AuraSkillsCompat.grantFarmingXp(player, xp);
+            }
 
             if (++broken >= hardCap) break;
         }
@@ -177,20 +185,6 @@ final class CubeBreaker {
             case COCOA -> Material.COCOA_BEANS;
             default -> null;
         };
-    }
-
-    private static void grantFarmingExperience(Player player, Material cropType) {
-        if (!Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) return;
-        var user = dev.aurelium.auraskills.api.AuraSkillsApi.get().getUser(player.getUniqueId());
-        if (user == null || !user.isLoaded()) return;
-        double xp = switch (cropType) {
-            case WHEAT -> 3.0;
-            case CARROTS, POTATOES -> 3.5;
-            case NETHER_WART -> 3.7;
-            case COCOA -> 4.0;
-            default -> 0;
-        };
-        if (xp > 0) user.addSkillXp(dev.aurelium.auraskills.api.skill.Skills.FARMING, xp);
     }
 
     private static BlockFace findAdjacentJungle(Block block) {
