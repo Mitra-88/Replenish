@@ -86,7 +86,8 @@ public final class ReplantQueue {
     }
 
     public void enqueue(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
-        int delay = Math.max(1, delayTicks) & TIME_WHEEL_MASK;
+        int delay = delayTicks % TIME_WHEEL_SIZE;
+        if (delay <= 0) delay = 1;
         int slot = (cursor + delay) & TIME_WHEEL_MASK;
 
         int index = acquire();
@@ -122,7 +123,13 @@ public final class ReplantQueue {
 
     private void replant(Job job) {
         Block block = job.block;
-        if (block == null || !block.getType().isAir()) return;
+        if (block == null) return;
+
+        var world = block.getWorld();
+        int cx = block.getX() >> 4, cz = block.getZ() >> 4;
+        if (!world.isChunkLoaded(cx, cz)) return;
+
+        if (!block.getType().isAir()) return;
 
         Material plant = job.plantMaterial;
         if (plant == Material.COCOA) {

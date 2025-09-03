@@ -6,17 +6,23 @@ import org.bukkit.entity.Player;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 final class AuraSkillsCompat {
     private static volatile boolean checked = false;
     private static volatile boolean available = false;
+    private static volatile long lastCheckNanos = 0L;
+    private static final long RECHECK_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(30);
 
     private AuraSkillsCompat() {}
 
     static boolean isAvailable() {
-        if (!checked) {
+        long now = System.nanoTime();
+        if (!checked || !available || (now - lastCheckNanos) >= RECHECK_INTERVAL_NANOS) {
             available = Bukkit.getPluginManager().isPluginEnabled("AuraSkills");
             checked = true;
+            lastCheckNanos = now;
         }
         return available;
     }
@@ -43,7 +49,8 @@ final class AuraSkillsCompat {
             Class<?> skillInterface = Class.forName("dev.aurelium.auraskills.api.skill.Skill");
             Method addSkillXp = user.getClass().getMethod("addSkillXp", skillInterface, double.class);
             addSkillXp.invoke(user, FARMING, xp);
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            Bukkit.getLogger().log(Level.FINE, "[Replenish] AuraSkills XP grant failed", t);
         }
     }
 }

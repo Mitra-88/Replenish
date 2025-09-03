@@ -43,7 +43,7 @@ public final class SeedIndex {
                 offHand.setAmount(amount - 1);
                 inventory.setItemInOffHand(offHand);
             } else {
-                inventory.setItemInOffHand(null);
+                inventory.setItemInOffHand(new ItemStack(Material.AIR));
             }
             firstSlotByMaterial.put(seedMaterial, findNextSlot(inventory, seedMaterial));
             return true;
