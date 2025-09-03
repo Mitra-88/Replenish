@@ -19,7 +19,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     }
 
     private static String usage(String base) {
-        return "&7Usage: &e/" + base + " &fstatus | toggle| reload";
+        return "&7Usage: &e/" + base + " &fstatus | toggle | reload";
     }
 
     @Override

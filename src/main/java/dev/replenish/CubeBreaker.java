@@ -1,6 +1,7 @@
 package dev.replenish;
 
-import org.bukkit.*;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
@@ -11,6 +12,8 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.ArrayList;
+import java.util.List;
 
 final class CubeBreaker {
 
@@ -31,23 +34,6 @@ final class CubeBreaker {
     private static final BlockFace[] HORIZONTAL_FACES = {
             BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
     };
-
-    private static final int[][] OFFSETS_R1;
-    static {
-        OFFSETS_R1 = new int[26][3];
-        int i = 0;
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    if (dx == 0 && dy == 0 && dz == 0) continue;
-                    OFFSETS_R1[i][0] = dx;
-                    OFFSETS_R1[i][1] = dy;
-                    OFFSETS_R1[i][2] = dz;
-                    i++;
-                }
-            }
-        }
-    }
 
     private CubeBreaker() {}
 
@@ -71,12 +57,16 @@ final class CubeBreaker {
         if (!canUseToolFor(centerType, hoes, axes)) return;
 
         final boolean sameTypeOnly = cfg.cubeHarvestSameTypeOnly;
-        final int hardCap = Math.min(cfg.cubeHarvestHardCap, OFFSETS_R1.length);
+        final int radius = Math.max(0, cfg.cubeHarvestRadius);
+        final int hardCap = Math.max(0, cfg.cubeHarvestHardCap); // 0 => unlimited
 
         int broken = 0;
 
-        for (int n = 0; n < hardCap; n++) {
-            int[] o = OFFSETS_R1[n];
+        List<int[]> offsets = neighborOffsets(radius);
+        for (int n = 0; n < offsets.size(); n++) {
+            if (hardCap > 0 && broken >= hardCap) break;
+
+            int[] o = offsets.get(n);
             Block b = center.getRelative(o[0], o[1], o[2]);
 
             if (!b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4)) continue;
@@ -122,6 +112,7 @@ final class CubeBreaker {
                     (type == Material.COCOA && originalData instanceof Directional d) ? d.getFacing() : null;
             BlockFace playerFacing = player.getFacing();
 
+            // actually harvest
             b.setType(Material.AIR, false);
 
             if (!drops.isEmpty()) {
@@ -164,8 +155,21 @@ final class CubeBreaker {
                 AuraSkillsCompat.grantFarmingXp(player, xp);
             }
 
-            if (++broken >= hardCap) break;
+            broken++; // count only after a successful harvest
         }
+    }
+
+    private static List<int[]> neighborOffsets(int radius) {
+        List<int[]> out = new ArrayList<>();
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    out.add(new int[]{dx, dy, dz});
+                }
+            }
+        }
+        return out;
     }
 
     private static boolean canUseToolFor(Material crop, boolean hoes, boolean axes) {
