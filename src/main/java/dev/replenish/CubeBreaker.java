@@ -57,18 +57,16 @@ final class CubeBreaker {
         if (!canUseToolFor(centerType, hoes, axes)) return;
 
         final boolean sameTypeOnly = cfg.cubeHarvestSameTypeOnly;
-        final int radius = Math.max(0, cfg.cubeHarvestRadius);
-        final int hardCap = Math.max(0, cfg.cubeHarvestHardCap); // 0 => unlimited
+        final int radius = cfg.cubeHarvestRadius;
+        final int hardCap = cfg.cubeHarvestHardCap;
 
         int broken = 0;
 
         List<int[]> offsets = neighborOffsets(radius);
-        for (int n = 0; n < offsets.size(); n++) {
+        for (int[] o : offsets) {
             if (hardCap > 0 && broken >= hardCap) break;
 
-            int[] o = offsets.get(n);
             Block b = center.getRelative(o[0], o[1], o[2]);
-
             if (!b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4)) continue;
 
             Material type = b.getType();
@@ -112,7 +110,6 @@ final class CubeBreaker {
                     (type == Material.COCOA && originalData instanceof Directional d) ? d.getFacing() : null;
             BlockFace playerFacing = player.getFacing();
 
-            // actually harvest
             b.setType(Material.AIR, false);
 
             if (!drops.isEmpty()) {
@@ -155,7 +152,7 @@ final class CubeBreaker {
                 AuraSkillsCompat.grantFarmingXp(player, xp);
             }
 
-            broken++; // count only after a successful harvest
+            broken++;
         }
     }
 
