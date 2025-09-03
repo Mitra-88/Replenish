@@ -1,7 +1,7 @@
 # Replenish 🌾 – auto-replant QoL for 1.20+
 
 Small, fast, crop QoL plugin for Bukkit/Spigot/Paper 1.20+.
-Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature crop, it replants itself. Keeps things snappy, respects tools, and plays nice with AuraSkills.
+Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature crop, it replants itself. Keeps things snappy, respects tools.
 
 ---
 
@@ -16,8 +16,7 @@ Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature c
 * 🧊 **Great Harvest Mode** (3×3×3 fan-out): break one, it sweeps nearby crops too (safeguarded + configurable)
 * 💎 **Fortune-respecting**: uses Bukkit drops with your tool’s enchants
 * ⚡️ **High-throughput**: time-wheel queue, rate-limited per tick so servers don’t melt
-* 🧪 **AuraSkills** XP: gives Farming XP per crop type when you harvest mature plants
-
+*  🧪 **AuraSkills** XP (optional): Farming XP per crop if AuraSkills is present
 ---
 
 ## Quick install
@@ -36,7 +35,8 @@ Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature c
     * Replants at age **0**
     * Consumes **1 seed** from your inventory (or off-hand) if `requirePlayerSeed` is `true`
     * Drops go straight to you if `directPickup` is `true`
-    * Gives AuraSkills Farming XP (Wheat 3.0; Carrots/Potatoes 3.5; Wart 3.7; Cocoa 4.0)
+    * If AuraSkills is present, grants Farming XP
+      (Wheat 3.0; Carrots/Potatoes 3.5; Wart 3.7; Cocoa 4.0)
 * Breaking an **immature** crop:
 
     * Replants at the **same age** (no seed needed)
@@ -88,9 +88,3 @@ cubeHarvest:
   radius: 1              # currently operates as 3x3x3 around the center
   hardCap: 26            # safety cap on extra blocks per harvest
 ```
-
-**Notes that actually matter:**
-
-* `replantDelayMs` is converted to ticks internally (`replantDelayTicks`).
-* `maxReplantsPerTick` is a **hard throttle** for the replant queue. It’s already high; raise only if your server can handle it.
-* **Cube Harvest** right now is a 3×3×3 sweep per break (the `radius` is present for future expansion; code currently uses the 26-block neighborhood). `hardCap` stops it from going wild.
