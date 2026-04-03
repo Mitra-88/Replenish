@@ -1,7 +1,7 @@
 # Replenish 🌾 – auto-replant QoL
 
-Small, fast, crop QoL plugin for Bukkit/Spigot/Paper 26.1+.
-Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature crop, it replants itself. Keeps things snappy, respects tools.
+Small, blazingly fast, crop QoL plugin for Bukkit/Spigot/Paper 26.1+.
+Inspired by the **Replenish** enchant from Hypixel SkyBlock, break a mature crop → it replants itself.
 
 ---
 
@@ -36,7 +36,6 @@ Inspired by the **Replenish** enchant from Hypixel SkyBlock — break a mature c
 
 * Breaking an **immature** crop:
     * Replants at the **same age** (no seed needed)
-    * No extra XP
 
 ---
 
