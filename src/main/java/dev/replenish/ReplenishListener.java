@@ -144,19 +144,6 @@ public class ReplenishListener implements Listener {
         } else {
             plugin.enqueueReplant(block, cropType, delay, replantedAge, null);
         }
-
-        if (wasMature) {
-            double xp = switch (cropType) {
-                case WHEAT -> 3.0;
-                case CARROTS, POTATOES -> 3.5;
-                case NETHER_WART -> 3.7;
-                case COCOA -> 4.0;
-                default -> 0;
-            };
-            AuraSkillsCompat.grantFarmingXp(player, xp);
-        }
-
-        CubeBreaker.harvestAroundCenter(plugin, ageMetaRegistry, player, block, cropType);
     }
 
     private BlockFace findAdjacentJungle(Block block) {
