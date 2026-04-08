@@ -12,6 +12,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.GameMode;
@@ -28,6 +29,11 @@ public class ReplenishListener implements Listener {
     private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
             Material.WHEAT, Material.CARROTS, Material.POTATOES,
             Material.NETHER_WART, Material.COCOA
+    );
+
+    private static final Set<Material> SEED_TYPES = EnumSet.of(
+            Material.WHEAT_SEEDS, Material.CARROT, Material.POTATO,
+            Material.NETHER_WART, Material.COCOA_BEANS
     );
 
     private static final BlockFace[] HORIZONTAL_FACES = {
@@ -51,13 +57,55 @@ public class ReplenishListener implements Listener {
         this.ageMetaRegistry = ageMetaRegistry;
     }
 
-    @EventHandler public void onClick(InventoryClickEvent event) { if (event.getWhoClicked() instanceof Player player) SeedIndex.invalidate(player); }
-    @EventHandler public void onDrag(InventoryDragEvent event) { if (event.getWhoClicked() instanceof Player player) SeedIndex.invalidate(player); }
-    @EventHandler public void onOpen(InventoryOpenEvent event) { if (event.getPlayer() instanceof Player player) SeedIndex.invalidate(player); }
-    @EventHandler public void onClose(InventoryCloseEvent event) { if (event.getPlayer() instanceof Player player) SeedIndex.invalidate(player); }
-    @EventHandler public void onSwap(PlayerSwapHandItemsEvent event) { SeedIndex.invalidate(event.getPlayer()); }
-    @EventHandler public void onPickup(EntityPickupItemEvent event) { if (event.getEntity() instanceof Player player) SeedIndex.invalidate(player); }
-    @EventHandler public void onDrop(PlayerDropItemEvent event) { SeedIndex.invalidate(event.getPlayer()); }
+    private boolean isRelevantSeed(ItemStack item) {
+        return item != null && SEED_TYPES.contains(item.getType());
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        SeedIndex.invalidate(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            if (isRelevantSeed(event.getCurrentItem()) || isRelevantSeed(event.getCursor())) {
+                SeedIndex.invalidate(player);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            if (isRelevantSeed(event.getOldCursor()) || isRelevantSeed(event.getCursor())) {
+                SeedIndex.invalidate(player);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onSwap(PlayerSwapHandItemsEvent event) {
+        if (isRelevantSeed(event.getMainHandItem()) || isRelevantSeed(event.getOffHandItem())) {
+            SeedIndex.invalidate(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    public void onPickup(EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            if (isRelevantSeed(event.getItem().getItemStack())) {
+                SeedIndex.invalidate(player);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onDrop(PlayerDropItemEvent event) {
+        if (isRelevantSeed(event.getItemDrop().getItemStack())) {
+            SeedIndex.invalidate(event.getPlayer());
+        }
+    }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent event) {
