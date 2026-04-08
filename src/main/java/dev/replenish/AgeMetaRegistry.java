@@ -10,7 +10,6 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-
 public final class AgeMetaRegistry {
 
     public static final class AgeMeta {
@@ -35,7 +34,6 @@ public final class AgeMetaRegistry {
 
     public AgeMetaRegistry(Plugin plugin) {
         for (Material material : SUPPORTED_CROPS) {
-            //noinspection CatchMayIgnoreException
             try {
                 BlockData data = plugin.getServer().createBlockData(material);
                 if (data instanceof Ageable ageable) {
