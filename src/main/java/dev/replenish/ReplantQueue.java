@@ -10,6 +10,7 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.plugin.Plugin;
 
 import java.util.Arrays;
+import java.util.logging.Level;
 
 public final class ReplantQueue {
 
@@ -45,10 +46,8 @@ public final class ReplantQueue {
     private final int maxPerTick;
 
     private final int[] wheelHeads = new int[TIME_WHEEL_SIZE];
-
     private Job[] pool = new Job[2048];
     private int freeHead = -1;
-    private int poolSize = 0;
 
     private int cursor = 0;
     private int taskId = -1;
@@ -74,14 +73,7 @@ public final class ReplantQueue {
         started = false;
         if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
         taskId = -1;
-
         Arrays.fill(wheelHeads, -1);
-
-        pool = new Job[2048];
-        freeHead = -1;
-        poolSize = 0;
-        primePool();
-
         cursor = 0;
     }
 
@@ -102,17 +94,34 @@ public final class ReplantQueue {
         int head = wheelHeads[cursor];
         int processed = 0;
 
+        // Grouping by chunk reduces NMS chunk lookups during heavy replanting
+        long lastChunkKey = Long.MIN_VALUE;
+        boolean lastChunkLoaded = false;
+
         while (head != -1 && processed < maxPerTick) {
             Job job = pool[head];
             int next = job.next;
 
-            try {
-                replant(job);
-            } catch (Throwable ignored) {
-            } finally {
-                job.clear();
-                release(head);
+            Block b = job.block;
+            if (b != null) {
+                // Atomic-style chunk check: compute key and cache result for the batch
+                long currentKey = ((long) (b.getX() >> 4) << 32) | ((b.getZ() >> 4) & 0xFFFFFFFFL);
+                if (currentKey != lastChunkKey) {
+                    lastChunkKey = currentKey;
+                    lastChunkLoaded = b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4);
+                }
+
+                if (lastChunkLoaded) {
+                    try {
+                        replant(job);
+                    } catch (Exception e) {
+                        plugin.getLogger().log(Level.SEVERE, "Failed to replant block at " + b.getLocation(), e);
+                    }
+                }
             }
+
+            job.clear();
+            release(head);
             head = next;
             processed++;
         }
@@ -123,22 +132,21 @@ public final class ReplantQueue {
 
     private void replant(Job job) {
         Block block = job.block;
-        if (block == null) return;
-
-        var world = block.getWorld();
-        int cx = block.getX() >> 4, cz = block.getZ() >> 4;
-        if (!world.isChunkLoaded(cx, cz)) return;
-
         if (!block.getType().isAir()) return;
 
         Material plant = job.plantMaterial;
+        int targetAge = job.targetAge;
+
+        // Optimized AgeMeta lookup: Fetch once per replant
+        int maxAge = ageMetaRegistry.get(plant).maximumAge;
+
         if (plant == Material.COCOA) {
             BlockFace face = job.cocoaFacingDirection;
             if (face == null) return;
             block.setType(Material.COCOA, false);
             BlockData data = block.getBlockData();
             if (data instanceof Directional directional) directional.setFacing(face);
-            setAgeClamped(data, job.targetAge, plant, block);
+            applyAge(block, data, targetAge, maxAge);
             return;
         }
 
@@ -146,18 +154,17 @@ public final class ReplantQueue {
         if (plant == Material.NETHER_WART) {
             if (below != Material.SOUL_SAND) return;
             block.setType(Material.NETHER_WART, false);
-            setAgeClamped(block.getBlockData(), job.targetAge, plant, block);
+            applyAge(block, block.getBlockData(), targetAge, maxAge);
             return;
         }
 
         if (below != Material.FARMLAND) return;
         block.setType(plant, false);
-        setAgeClamped(block.getBlockData(), job.targetAge, plant, block);
+        applyAge(block, block.getBlockData(), targetAge, maxAge);
     }
 
-    private void setAgeClamped(BlockData data, int age, Material plant, Block block) {
+    private void applyAge(Block block, BlockData data, int age, int max) {
         if (data instanceof Ageable ageable) {
-            int max = ageMetaRegistry.get(plant).maximumAge;
             if (max > 0) ageable.setAge(Math.max(0, Math.min(max, age)));
             block.setBlockData(ageable, false);
         } else {
@@ -165,40 +172,34 @@ public final class ReplantQueue {
         }
     }
 
-    private void ensureCapacity(int required) {
-        if (pool.length >= required) return;
-        Job[] expanded = new Job[Math.max(required, pool.length * 2)];
-        System.arraycopy(pool, 0, expanded, 0, pool.length);
-        pool = expanded;
-    }
-
     private void primePool() {
-        ensureCapacity(1024);
-        int target = Math.max(poolSize, 1024);
-        for (int i = poolSize; i < target; i++) {
+        if (pool.length < 1024) pool = new Job[1024];
+        for (int i = 0; i < pool.length; i++) {
             pool[i] = new Job();
-            release(i);
+            pool[i].next = freeHead;
+            freeHead = i;
         }
-        poolSize = Math.max(poolSize, target);
-    }
-
-    private void release(int index) {
-        Job job = pool[index];
-        if (job != null) job.clear();
-        else pool[index] = new Job();
-        pool[index].next = freeHead;
-        freeHead = index;
     }
 
     private int acquire() {
-        if (freeHead != -1) {
-            int index = freeHead;
-            freeHead = pool[index].next;
-            pool[index].next = -1;
-            return index;
+        if (freeHead == -1) {
+            int oldSize = pool.length;
+            int newSize = oldSize * 2;
+            pool = Arrays.copyOf(pool, newSize);
+            for (int i = oldSize; i < newSize; i++) {
+                pool[i] = new Job();
+                pool[i].next = freeHead;
+                freeHead = i;
+            }
         }
-        ensureCapacity(poolSize + 1);
-        if (pool[poolSize] == null) pool[poolSize] = new Job();
-        return poolSize++;
+        int index = freeHead;
+        freeHead = pool[index].next;
+        pool[index].next = -1;
+        return index;
+    }
+
+    private void release(int index) {
+        pool[index].next = freeHead;
+        freeHead = index;
     }
 }
