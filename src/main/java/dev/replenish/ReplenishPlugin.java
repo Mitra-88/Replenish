@@ -31,8 +31,6 @@ public class ReplenishPlugin extends JavaPlugin {
             Objects.requireNonNull(getCommand("replenish")).setExecutor(replenishCommand);
             Objects.requireNonNull(getCommand("replenish")).setTabCompleter(replenishCommand);
         }
-
-        getLogger().info("[Replenish] Enabled. global enabled=" + isEnabledGlobally());
     }
 
     @Override
@@ -84,11 +82,6 @@ public class ReplenishPlugin extends JavaPlugin {
         final int maxReplantsPerTick;
         final Map<Material, Boolean> cropEnabled;
 
-        final boolean cubeHarvestEnabled;
-        final boolean cubeHarvestSameTypeOnly;
-        final int cubeHarvestRadius;
-        final int cubeHarvestHardCap;
-
         private ConfigCache() {
             this.enabled = true;
             this.requirePlayerSeed = true;
@@ -96,11 +89,6 @@ public class ReplenishPlugin extends JavaPlugin {
             this.replantDelayTicks = 1;
             this.maxReplantsPerTick = 2048;
             this.cropEnabled = defaultCrops();
-
-            this.cubeHarvestEnabled = false;
-            this.cubeHarvestSameTypeOnly = true;
-            this.cubeHarvestRadius = 1;
-            this.cubeHarvestHardCap = 26;
         }
 
         static ConfigCache from(FileConfiguration config) {
@@ -110,34 +98,18 @@ public class ReplenishPlugin extends JavaPlugin {
                     config.getBoolean("directPickup", true),
                     Math.max(1, config.getInt("replantDelayTicks", 1)),
                     Math.max(256, config.getInt("maxReplantsPerTick", 2048)),
-                    readCrops(config),
-                    config.getBoolean("cubeHarvest.enabled", false),
-                    config.getBoolean("cubeHarvest.sameTypeOnly", true),
-                    Math.max(0, config.getInt("cubeHarvest.radius", 1)),
-                    Math.max(0, config.getInt("cubeHarvest.hardCap", 26))
+                    readCrops(config)
             );
         }
 
-        private ConfigCache(boolean enabled,
-                            boolean requirePlayerSeed,
-                            boolean directPickup,
-                            int replantDelayTicks,
-                            int maxReplantsPerTick,
-                            Map<Material, Boolean> cropEnabled,
-                            boolean cubeHarvestEnabled,
-                            boolean cubeHarvestSameTypeOnly,
-                            int cubeHarvestRadius,
-                            int cubeHarvestHardCap) {
+        private ConfigCache(boolean enabled, boolean requirePlayerSeed, boolean directPickup,
+                            int replantDelayTicks, int maxReplantsPerTick, Map<Material, Boolean> cropEnabled) {
             this.enabled = enabled;
             this.requirePlayerSeed = requirePlayerSeed;
             this.directPickup = directPickup;
             this.replantDelayTicks = replantDelayTicks;
             this.maxReplantsPerTick = maxReplantsPerTick;
             this.cropEnabled = cropEnabled;
-            this.cubeHarvestEnabled = cubeHarvestEnabled;
-            this.cubeHarvestSameTypeOnly = cubeHarvestSameTypeOnly;
-            this.cubeHarvestRadius = cubeHarvestRadius;
-            this.cubeHarvestHardCap = cubeHarvestHardCap;
         }
 
         private static Map<Material, Boolean> readCrops(FileConfiguration config) {
