@@ -6,20 +6,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.UUID;
 
 public final class SeedIndex {
 
-    private static final WeakHashMap<Player, Map<Material, Integer>> cacheByPlayer = new WeakHashMap<>();
+    private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new HashMap<>();
 
     public static void invalidate(Player player) {
-        cacheByPlayer.remove(player);
+        cacheByPlayer.remove(player.getUniqueId());
     }
 
     public static boolean consume(Player player, Material seedMaterial) {
         PlayerInventory inventory = player.getInventory();
-        Map<Material, Integer> firstSlotByMaterial = cacheByPlayer.computeIfAbsent(player, p -> buildIndex(inventory));
+        Map<Material, Integer> firstSlotByMaterial = cacheByPlayer.computeIfAbsent(player.getUniqueId(), p -> buildIndex(inventory));
         Integer slotIndex = firstSlotByMaterial.get(seedMaterial);
 
         if (slotIndex != null && slotIndex >= 0) {
@@ -30,6 +31,7 @@ public final class SeedIndex {
                 }
                 return true;
             }
+            // Fallback: full rebuild if index is stale
             firstSlotByMaterial.clear();
             firstSlotByMaterial.putAll(buildIndex(inventory));
             slotIndex = firstSlotByMaterial.get(seedMaterial);
@@ -45,7 +47,6 @@ public final class SeedIndex {
             } else {
                 inventory.setItemInOffHand(new ItemStack(Material.AIR));
             }
-            firstSlotByMaterial.put(seedMaterial, findNextSlot(inventory, seedMaterial));
             return true;
         }
 
@@ -54,7 +55,7 @@ public final class SeedIndex {
 
     private static Map<Material, Integer> buildIndex(PlayerInventory inventory) {
         Map<Material, Integer> index = new EnumMap<>(Material.class);
-        for (int i = 0, size = inventory.getSize(); i < size; i++) {
+        for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack == null || stack.getAmount() <= 0) continue;
             index.putIfAbsent(stack.getType(), i);
@@ -63,7 +64,7 @@ public final class SeedIndex {
     }
 
     private static int findNextSlot(PlayerInventory inventory, Material material) {
-        for (int i = 0, size = inventory.getSize(); i < size; i++) {
+        for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack != null && stack.getType() == material && stack.getAmount() > 0) return i;
         }
