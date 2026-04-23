@@ -13,6 +13,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     private static final String PREFIX = "&8[&eReplenish&8] &7";
     private static final String ARROW = "&8» ";
     private static final String DOT = "&8• ";
+    private static final String LINE = "&8&m                                   ";
 
     public ReplenishCommand(ReplenishPlugin plugin) {
         this.plugin = plugin;
@@ -30,12 +31,12 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         return ARROW + "&cUsage: &7/" + base + " &f<status | toggle | reload>";
     }
 
-    private boolean checkPerm(CommandSender sender, String perm) {
+    private boolean isDenied(CommandSender sender, String perm) {
         if (!sender.hasPermission(perm)) {
             send(sender, ARROW + "&cPermission denied. &8(&7" + perm + "&8)");
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -48,7 +49,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "toggle" -> {
-                if (!checkPerm(sender, "replenish.toggle")) return true;
+                if (isDenied(sender, "replenish.toggle")) return true;
 
                 boolean nowEnabled = !plugin.isEnabledGlobally();
                 plugin.getConfig().set("enabled", nowEnabled);
@@ -60,14 +61,14 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "reload" -> {
-                if (!checkPerm(sender, "replenish.reload")) return true;
+                if (isDenied(sender, "replenish.reload")) return true;
 
                 plugin.reloadLocalConfig();
                 sendPrefixed(sender, "&aConfiguration successfully reloaded.");
                 return true;
             }
             case "status" -> {
-                if (!checkPerm(sender, "replenish.status")) return true;
+                if (isDenied(sender, "replenish.status")) return true;
 
                 var cfg = plugin.getConfigCache();
                 String version = plugin.getDescription().getVersion();
@@ -83,20 +84,20 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 send(sender, "  " + DOT + "&7Tools: &aHoes (Crops) &8| &aAxes (Cocoa)");
                 send(sender, "");
 
-                send(sender, "&ePerformance Tuning:");
-                send(sender, "  " + DOT + "&7Replant Delay: &f" + cfg.replantDelayTicks + " ticks");
-                send(sender, "  " + DOT + "&7Max Replants/Tick: &f" + cfg.maxReplantsPerTick);
+                send(sender, "&ePerformance:");
+                send(sender, "  " + DOT + "&7Replant Delay: &f" + cfg.replantDelayTicks + "t");
+                send(sender, "  " + DOT + "&7Max Load/Tick: &f" + cfg.maxReplantsPerTick);
                 send(sender, "");
 
                 send(sender, "&eCrop Support:");
-                send(sender, "  " + DOT + "&7Wheat: " + formatCrop(Material.WHEAT));
-                send(sender, "  " + DOT + "&7Carrots: " + formatCrop(Material.CARROTS));
-                send(sender, "  " + DOT + "&7Potatoes: " + formatCrop(Material.POTATOES));
-                send(sender, "  " + DOT + "&7Nether Wart: " + formatCrop(Material.NETHER_WART));
+                send(sender, "  " + DOT + "&7Wheat: " + formatCrop(Material.WHEAT) +
+                        "  &7Carrots: " + formatCrop(Material.CARROTS));
+                send(sender, "  " + DOT + "&7Potatoes: " + formatCrop(Material.POTATOES) +
+                        "  &7Nether Wart: " + formatCrop(Material.NETHER_WART));
                 send(sender, "  " + DOT + "&7Cocoa: " + formatCrop(Material.COCOA));
 
                 send(sender, "");
-                send(sender, "&8&m                              &r");
+                send(sender, LINE);
                 return true;
             }
             default -> {
@@ -114,7 +115,9 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase(Locale.ROOT);
-            return SUBCOMMANDS.stream().filter(s -> s.startsWith(prefix)).toList();
+            return SUBCOMMANDS.stream()
+                    .filter(s -> s.startsWith(prefix))
+                    .toList();
         }
         return Collections.emptyList();
     }
