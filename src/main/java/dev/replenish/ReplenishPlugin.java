@@ -11,6 +11,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ReplenishPlugin extends JavaPlugin {
 
+    private static final int DEFAULT_REPLANT_DELAY_TICKS = 1;
+    private static final int DEFAULT_MAX_REPLANTS = 4096;
+    private static final int MIN_REPLANTS_PER_TICK = 256;
+
     private final AtomicReference<ConfigCache> configCacheRef = new AtomicReference<>(new ConfigCache());
     private volatile ReplantQueue replantQueue;
     private AgeMetaRegistry ageMetaRegistry;
@@ -42,28 +46,38 @@ public class ReplenishPlugin extends JavaPlugin {
         reloadConfig();
         FileConfiguration config = getConfig();
 
-        int millis = Math.max(0, config.getInt("replantDelayMs", 15));
-        int replantDelayTicks = Math.max(1, Math.round(millis / 50f));
-        config.set("replantDelayTicks", replantDelayTicks);
+        int delayTicks = Math.max(
+                1,
+                config.getInt("replantDelayTicks", DEFAULT_REPLANT_DELAY_TICKS)
+        );
 
-        int maxPerTick = Math.max(256, config.getInt("maxReplantsPerTick", 2048));
-        config.set("maxReplantsPerTick", maxPerTick);
+        int maxPerTick = Math.max(
+                MIN_REPLANTS_PER_TICK,
+                config.getInt("maxReplantsPerTick", DEFAULT_MAX_REPLANTS)
+        );
 
-        saveConfig();
-
-        ConfigCache newCache = ConfigCache.from(config);
+        ConfigCache newCache = ConfigCache.from(config, delayTicks, maxPerTick);
         configCacheRef.set(newCache);
 
         if (replantQueue != null) {
             replantQueue.stop();
-            replantQueue = new ReplantQueue(this, newCache.maxReplantsPerTick, ageMetaRegistry);
-            replantQueue.start();
         }
+
+        replantQueue = new ReplantQueue(this, maxPerTick, ageMetaRegistry);
+        replantQueue.start();
     }
 
-    public boolean isEnabledGlobally() { return getConfigCache().enabled; }
-    public boolean isCropEnabled(Material crop) { return crop != null && getConfigCache().cropEnabled.getOrDefault(crop, true); }
-    public ConfigCache getConfigCache() { return configCacheRef.get(); }
+    public boolean isEnabledGlobally() {
+        return getConfigCache().enabled;
+    }
+
+    public boolean isCropEnabled(Material crop) {
+        return crop != null && getConfigCache().cropEnabled.getOrDefault(crop, true);
+    }
+
+    public ConfigCache getConfigCache() {
+        return configCacheRef.get();
+    }
 
     public void enqueueReplant(org.bukkit.block.Block block,
                                org.bukkit.Material plantMaterial,
@@ -71,7 +85,9 @@ public class ReplenishPlugin extends JavaPlugin {
                                int targetAge,
                                org.bukkit.block.BlockFace cocoaFacingDirection) {
         ReplantQueue queue = this.replantQueue;
-        if (queue != null) queue.enqueue(block, plantMaterial, delayTicks, targetAge, cocoaFacingDirection);
+        if (queue != null) {
+            queue.enqueue(block, plantMaterial, delayTicks, targetAge, cocoaFacingDirection);
+        }
     }
 
     public static final class ConfigCache {
@@ -86,18 +102,18 @@ public class ReplenishPlugin extends JavaPlugin {
             this.enabled = true;
             this.requirePlayerSeed = true;
             this.directPickup = true;
-            this.replantDelayTicks = 1;
-            this.maxReplantsPerTick = 2048;
+            this.replantDelayTicks = DEFAULT_REPLANT_DELAY_TICKS;
+            this.maxReplantsPerTick = DEFAULT_MAX_REPLANTS;
             this.cropEnabled = defaultCrops();
         }
 
-        static ConfigCache from(FileConfiguration config) {
+        static ConfigCache from(FileConfiguration config, int delayTicks, int maxPerTick) {
             return new ConfigCache(
                     config.getBoolean("enabled", true),
                     config.getBoolean("requirePlayerSeed", true),
                     config.getBoolean("directPickup", true),
-                    Math.max(1, config.getInt("replantDelayTicks", 1)),
-                    Math.max(256, config.getInt("maxReplantsPerTick", 2048)),
+                    delayTicks,
+                    maxPerTick,
                     readCrops(config)
             );
         }

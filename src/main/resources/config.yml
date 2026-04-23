@@ -2,10 +2,10 @@ enabled: true
 requirePlayerSeed: true
 directPickup: true
 
-# ~15ms default → 1 tick
-replantDelayMs: 15
+# 1 tick = 50ms (Minecraft standard)
+replantDelayTicks: 1
 
-# cap per-tick replant work; raise if you have headroom
+# Hard cap per tick to avoid lag spikes
 maxReplantsPerTick: 4096
 
 crops:
