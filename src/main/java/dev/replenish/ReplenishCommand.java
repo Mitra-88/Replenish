@@ -10,6 +10,10 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     private final ReplenishPlugin plugin;
     private static final List<String> SUBCOMMANDS = Arrays.asList("status", "toggle", "reload");
 
+    private static final String PREFIX = "&8[&eReplenish&8] &7";
+    private static final String ARROW = "&8» ";
+    private static final String DOT = "&8• ";
+
     public ReplenishCommand(ReplenishPlugin plugin) {
         this.plugin = plugin;
     }
@@ -18,8 +22,20 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ColorUtils.color(message));
     }
 
+    private static void sendPrefixed(CommandSender sender, String message) {
+        send(sender, PREFIX + message);
+    }
+
     private static String usage(String base) {
-        return "&7Usage: &e/" + base + " &fstatus | toggle | reload";
+        return ARROW + "&cUsage: &7/" + base + " &f<status | toggle | reload>";
+    }
+
+    private boolean checkPerm(CommandSender sender, String perm) {
+        if (!sender.hasPermission(perm)) {
+            send(sender, ARROW + "&cPermission denied. &8(&7" + perm + "&8)");
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -32,48 +48,55 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "toggle" -> {
-                if (!sender.hasPermission("replenish.toggle")) { send(sender, "&cYou don’t have permission."); return true; }
+                if (!checkPerm(sender, "replenish.toggle")) return true;
+
                 boolean nowEnabled = !plugin.isEnabledGlobally();
                 plugin.getConfig().set("enabled", nowEnabled);
                 plugin.saveConfig();
                 plugin.reloadLocalConfig();
-                send(sender, "&7Global: " + (nowEnabled ? "&aON" : "&cOFF"));
+
+                String state = nowEnabled ? "&a&lENABLED" : "&c&lDISABLED";
+                sendPrefixed(sender, "Global replenish is now " + state + "&7.");
                 return true;
             }
             case "reload" -> {
-                if (!sender.hasPermission("replenish.reload")) { send(sender, "&cYou don’t have permission."); return true; }
+                if (!checkPerm(sender, "replenish.reload")) return true;
+
                 plugin.reloadLocalConfig();
-                send(sender, "&aConfig reloaded.");
+                sendPrefixed(sender, "&aConfiguration successfully reloaded.");
                 return true;
             }
             case "status" -> {
-                if (!sender.hasPermission("replenish.status")) { send(sender, "&cYou don’t have permission."); return true; }
+                if (!checkPerm(sender, "replenish.status")) return true;
 
                 var cfg = plugin.getConfigCache();
-
-                send(sender, "&6&lReplenish &7v" + plugin.getDescription().getVersion());
-                send(sender, "&8-----------------");
-
-                send(sender, "&eCore");
-                send(sender, "  &7Enabled: " + (cfg.enabled ? "&aON" : "&cOFF"));
-                send(sender, "  &7Require seed: " + (cfg.requirePlayerSeed ? "&aYes" : "&cNo"));
-                send(sender, "  &7Direct pickup: " + (cfg.directPickup ? "&aYes" : "&cNo"));
-                send(sender, "  &7Tool requirement: &aHoes for crops, Axes for cocoa");
+                String version = plugin.getDescription().getVersion();
 
                 send(sender, "");
-                send(sender, "&eTuning");
-                send(sender, "  &7Replant delay (ticks): &f" + cfg.replantDelayTicks);
-                send(sender, "  &7Max replants/tick: &f" + cfg.maxReplantsPerTick);
+                send(sender, "&8&m      &8[ &e&lReplenish &7v" + version + " &8]&m      &r");
+                send(sender, "");
+
+                send(sender, "&eCore Settings:");
+                send(sender, "  " + DOT + "&7Status: " + (cfg.enabled ? "&a&lON" : "&c&lOFF"));
+                send(sender, "  " + DOT + "&7Require Seed: " + (cfg.requirePlayerSeed ? "&aYes" : "&cNo"));
+                send(sender, "  " + DOT + "&7Direct Pickup: " + (cfg.directPickup ? "&aYes" : "&cNo"));
+                send(sender, "  " + DOT + "&7Tools: &aHoes (Crops) &8| &aAxes (Cocoa)");
+                send(sender, "");
+
+                send(sender, "&ePerformance Tuning:");
+                send(sender, "  " + DOT + "&7Replant Delay: &f" + cfg.replantDelayTicks + " ticks");
+                send(sender, "  " + DOT + "&7Max Replants/Tick: &f" + cfg.maxReplantsPerTick);
+                send(sender, "");
+
+                send(sender, "&eCrop Support:");
+                send(sender, "  " + DOT + "&7Wheat: " + formatCrop(Material.WHEAT));
+                send(sender, "  " + DOT + "&7Carrots: " + formatCrop(Material.CARROTS));
+                send(sender, "  " + DOT + "&7Potatoes: " + formatCrop(Material.POTATOES));
+                send(sender, "  " + DOT + "&7Nether Wart: " + formatCrop(Material.NETHER_WART));
+                send(sender, "  " + DOT + "&7Cocoa: " + formatCrop(Material.COCOA));
 
                 send(sender, "");
-                send(sender, "&eCrops");
-                send(sender, "  &7Wheat: " + (plugin.isCropEnabled(Material.WHEAT) ? "&a✓" : "&c✗"));
-                send(sender, "  &7Carrots: " + (plugin.isCropEnabled(Material.CARROTS) ? "&a✓" : "&c✗"));
-                send(sender, "  &7Potatoes: " + (plugin.isCropEnabled(Material.POTATOES) ? "&a✓" : "&c✗"));
-                send(sender, "  &7Nether Wart: " + (plugin.isCropEnabled(Material.NETHER_WART) ? "&a✓" : "&c✗"));
-                send(sender, "  &7Cocoa: " + (plugin.isCropEnabled(Material.COCOA) ? "&a✓" : "&c✗"));
-
-                send(sender, "&8-----------------");
+                send(sender, "&8&m                              &r");
                 return true;
             }
             default -> {
@@ -81,6 +104,10 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
         }
+    }
+
+    private String formatCrop(Material mat) {
+        return plugin.isCropEnabled(mat) ? "&a✔" : "&c✘";
     }
 
     @Override

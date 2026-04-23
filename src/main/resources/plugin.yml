@@ -4,7 +4,6 @@ version: 5.0.0
 api-version: "26.1"
 description: "Auto-replants crops with age preservation, Fortune-respecting drops, and direct pickup."
 authors: [ "Mitra-88" ]
-softdepend: [AuraSkills]
 
 commands:
   replenish:
@@ -25,7 +24,7 @@ permissions:
 
   replenish.use:
     description: "Allows using /replenish base command."
-    default: op
+    default: true
 
   replenish.toggle:
     description: "Allows toggling Replenish on/off globally."
