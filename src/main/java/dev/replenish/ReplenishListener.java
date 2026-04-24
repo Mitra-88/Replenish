@@ -1,30 +1,34 @@
 package dev.replenish;
 
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
-import org.bukkit.event.*;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.*;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.World;
 
 import java.util.*;
 
 public class ReplenishListener implements Listener {
 
     private final ReplenishPlugin plugin;
-    private final AgeMetaRegistry ageMetaRegistry;
+    private final Map<Material, Integer> maxAges;
+    private final Map<UUID, Long> lastInvalidation;
 
     private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
             Material.WHEAT, Material.CARROTS, Material.POTATOES,
@@ -46,23 +50,45 @@ public class ReplenishListener implements Listener {
     private static final EnumSet<Material> AXE_TOOLS = EnumSet.of(
             Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
     );
-
     private static final EnumSet<Material> JUNGLE_ANCHOR_BLOCKS = EnumSet.of(
             Material.JUNGLE_LOG, Material.STRIPPED_JUNGLE_LOG,
             Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD
     );
 
+    private static final long INVALIDATION_COOLDOWN_MS = 50L;
+
     public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ageMetaRegistry) {
         this.plugin = plugin;
-        this.ageMetaRegistry = ageMetaRegistry;
+        this.lastInvalidation = new HashMap<>();
+
+        this.maxAges = new EnumMap<>(Material.class);
+        for (Material crop : SUPPORTED_CROPS) {
+            AgeMetaRegistry.AgeMeta meta = ageMetaRegistry.get(crop);
+            if (meta != null) {
+                maxAges.put(crop, meta.maximumAge);
+            } else {
+                maxAges.put(crop, 0);
+                plugin.getLogger().warning("Missing AgeMeta for " + crop + ", replant may not work correctly");
+            }
+        }
     }
 
     private boolean isRelevantSeed(ItemStack item) {
         return item != null && SEED_TYPES.contains(item.getType());
     }
 
+    private void invalidateWithCooldown(Player player) {
+        long now = System.currentTimeMillis();
+        Long last = lastInvalidation.get(player.getUniqueId());
+        if (last == null || (now - last) >= INVALIDATION_COOLDOWN_MS) {
+            lastInvalidation.put(player.getUniqueId(), now);
+            SeedIndex.invalidate(player);
+        }
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        lastInvalidation.remove(event.getPlayer().getUniqueId());
         SeedIndex.invalidate(event.getPlayer());
     }
 
@@ -70,7 +96,7 @@ public class ReplenishListener implements Listener {
     public void onClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
             if (isRelevantSeed(event.getCurrentItem()) || isRelevantSeed(event.getCursor())) {
-                SeedIndex.invalidate(player);
+                invalidateWithCooldown(player);
             }
         }
     }
@@ -79,7 +105,7 @@ public class ReplenishListener implements Listener {
     public void onDrag(InventoryDragEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
             if (isRelevantSeed(event.getOldCursor()) || isRelevantSeed(event.getCursor())) {
-                SeedIndex.invalidate(player);
+                invalidateWithCooldown(player);
             }
         }
     }
@@ -87,7 +113,7 @@ public class ReplenishListener implements Listener {
     @EventHandler
     public void onSwap(PlayerSwapHandItemsEvent event) {
         if (isRelevantSeed(event.getMainHandItem()) || isRelevantSeed(event.getOffHandItem())) {
-            SeedIndex.invalidate(event.getPlayer());
+            invalidateWithCooldown(event.getPlayer());
         }
     }
 
@@ -95,7 +121,7 @@ public class ReplenishListener implements Listener {
     public void onPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof Player player) {
             if (isRelevantSeed(event.getItem().getItemStack())) {
-                SeedIndex.invalidate(player);
+                invalidateWithCooldown(player);
             }
         }
     }
@@ -103,7 +129,7 @@ public class ReplenishListener implements Listener {
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         if (isRelevantSeed(event.getItemDrop().getItemStack())) {
-            SeedIndex.invalidate(event.getPlayer());
+            invalidateWithCooldown(event.getPlayer());
         }
     }
 
@@ -142,7 +168,7 @@ public class ReplenishListener implements Listener {
         int originalAge = 0;
         boolean wasMature = false;
         if (originalBlockData instanceof Ageable ageable) {
-            int maxAge = ageMetaRegistry.get(cropType).maximumAge;
+            int maxAge = maxAges.getOrDefault(cropType, 0);
             originalAge = ageable.getAge();
             wasMature = maxAge > 0 && originalAge >= maxAge;
         }
@@ -159,7 +185,6 @@ public class ReplenishListener implements Listener {
         Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
 
         BlockFace originalCocoaFacing = (cropType == Material.COCOA && originalBlockData instanceof Directional directional) ? directional.getFacing() : null;
-        BlockFace playerFacing = player.getFacing();
 
         block.setType(Material.AIR, false);
 
@@ -178,20 +203,34 @@ public class ReplenishListener implements Listener {
 
         int delay = Math.max(1, config.replantDelayTicks);
         if (cropType == Material.COCOA) {
-            BlockFace chosenFacing;
-            if (originalCocoaFacing != null && isJungle(block.getRelative(originalCocoaFacing).getType())) {
-                chosenFacing = originalCocoaFacing;
-            } else if (isJungle(block.getRelative(playerFacing).getType())) {
-                chosenFacing = playerFacing;
-            } else {
-                chosenFacing = findAdjacentJungle(block);
-            }
+            BlockFace chosenFacing = determineCocoaFacing(block, originalCocoaFacing, player);
             if (chosenFacing != null) {
                 plugin.enqueueReplant(block, Material.COCOA, delay, replantedAge, chosenFacing);
             }
         } else {
             plugin.enqueueReplant(block, cropType, delay, replantedAge, null);
         }
+    }
+
+    // ==================== Cocoa helpers ====================
+    private BlockFace determineCocoaFacing(Block block, BlockFace originalFacing, Player player) {
+        if (originalFacing != null && isJungle(block.getRelative(originalFacing).getType())) {
+            return originalFacing;
+        }
+        BlockFace horizontalFacing = getPlayerHorizontalFace(player);
+        if (horizontalFacing != null && isJungle(block.getRelative(horizontalFacing).getType())) {
+            return horizontalFacing;
+        }
+        return findAdjacentJungle(block);
+    }
+
+    private BlockFace getPlayerHorizontalFace(Player player) {
+        float yaw = player.getLocation().getYaw();
+        float normalized = (yaw % 360 + 360) % 360;
+        if (normalized < 45 || normalized >= 315) return BlockFace.SOUTH;
+        if (normalized < 135) return BlockFace.WEST;
+        if (normalized < 225) return BlockFace.NORTH;
+        return BlockFace.EAST;
     }
 
     private BlockFace findAdjacentJungle(Block block) {
@@ -201,7 +240,9 @@ public class ReplenishListener implements Listener {
         return null;
     }
 
-    private boolean isJungle(Material material) { return JUNGLE_ANCHOR_BLOCKS.contains(material); }
+    private boolean isJungle(Material material) {
+        return JUNGLE_ANCHOR_BLOCKS.contains(material);
+    }
 
     private static Material seedFor(Material crop) {
         return switch (crop) {
