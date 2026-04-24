@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This plugin is production-usable and works reliably in standard scenarios. However, it is still under active development and may contain minor edge-case bugs. These are uncommon and should not affect typical gameplay usage.
+
 # Replenish 🌾 – auto-replant QoL
 
 Small, blazingly fast, crop QoL plugin for Bukkit/Spigot/Paper 26.1+.
@@ -53,8 +56,6 @@ Permissions:
 * `replenish.reload` (default: **op**)
 * `replenish.*` (default: **op**)
 
-> The command node is declared as `replenish.use`, but each sub-permission gates its subcommand.
-
 ---
 
 ## Config
@@ -64,8 +65,8 @@ enabled: true
 requirePlayerSeed: true
 directPickup: true
 
-# ~15ms → 1 tick
-replantDelayMs: 15
+# 1 tick = 50ms (Minecraft standard)
+replantDelayTicks: 1
 
 # replant jobs processed per server tick (bump if server is strong)
 maxReplantsPerTick: 4096

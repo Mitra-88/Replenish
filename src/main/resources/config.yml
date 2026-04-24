@@ -5,7 +5,7 @@ directPickup: true
 # 1 tick = 50ms (Minecraft standard)
 replantDelayTicks: 1
 
-# Hard cap per tick to avoid lag spikes
+# replant jobs processed per server tick (bump if server is strong)
 maxReplantsPerTick: 4096
 
 crops:
