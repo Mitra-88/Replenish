@@ -94,7 +94,6 @@ public final class ReplantQueue {
         int head = wheelHeads[cursor];
         int processed = 0;
 
-        // Grouping by chunk reduces NMS chunk lookups during heavy replanting
         long lastChunkKey = Long.MIN_VALUE;
         boolean lastChunkLoaded = false;
 
@@ -104,7 +103,6 @@ public final class ReplantQueue {
 
             Block b = job.block;
             if (b != null) {
-                // Atomic-style chunk check: compute key and cache result for the batch
                 long currentKey = ((long) (b.getX() >> 4) << 32) | ((b.getZ() >> 4) & 0xFFFFFFFFL);
                 if (currentKey != lastChunkKey) {
                     lastChunkKey = currentKey;
@@ -137,7 +135,6 @@ public final class ReplantQueue {
         Material plant = job.plantMaterial;
         int targetAge = job.targetAge;
 
-        // Optimized AgeMeta lookup: Fetch once per replant
         int maxAge = ageMetaRegistry.get(plant).maximumAge;
 
         if (plant == Material.COCOA) {
