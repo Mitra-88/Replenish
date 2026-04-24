@@ -212,7 +212,6 @@ public class ReplenishListener implements Listener {
         }
     }
 
-    // ==================== Cocoa helpers ====================
     private BlockFace determineCocoaFacing(Block block, BlockFace originalFacing, Player player) {
         if (originalFacing != null && isJungle(block.getRelative(originalFacing).getType())) {
             return originalFacing;
