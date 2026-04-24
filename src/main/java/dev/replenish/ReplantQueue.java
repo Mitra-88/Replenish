@@ -2,6 +2,7 @@ package dev.replenish;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
@@ -46,7 +47,7 @@ public final class ReplantQueue {
     private final int maxPerTick;
 
     private final int[] wheelHeads = new int[TIME_WHEEL_SIZE];
-    private Job[] pool = new Job[2048];
+    private Job[] pool = new Job[4096];
     private int freeHead = -1;
 
     private int cursor = 0;
@@ -78,8 +79,8 @@ public final class ReplantQueue {
     }
 
     public void enqueue(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
-        int delay = delayTicks % TIME_WHEEL_SIZE;
-        if (delay <= 0) delay = 1;
+        int delay = delayTicks & TIME_WHEEL_MASK;
+        if (delay == 0) delay = 1;
         int slot = (cursor + delay) & TIME_WHEEL_MASK;
 
         int index = acquire();
@@ -97,31 +98,55 @@ public final class ReplantQueue {
         long lastChunkKey = Long.MIN_VALUE;
         boolean lastChunkLoaded = false;
 
+        int unprocessedHead = -1;
+        int unprocessedTail = -1;
+
         while (head != -1 && processed < maxPerTick) {
             Job job = pool[head];
             int next = job.next;
 
             Block b = job.block;
+            boolean shouldProcess = false;
+
             if (b != null) {
+                World world = b.getWorld();
                 long currentKey = ((long) (b.getX() >> 4) << 32) | ((b.getZ() >> 4) & 0xFFFFFFFFL);
                 if (currentKey != lastChunkKey) {
                     lastChunkKey = currentKey;
-                    lastChunkLoaded = b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4);
+                    lastChunkLoaded = world.isChunkLoaded(b.getX() >> 4, b.getZ() >> 4);
                 }
 
                 if (lastChunkLoaded) {
-                    try {
-                        replant(job);
-                    } catch (Exception e) {
-                        plugin.getLogger().log(Level.SEVERE, "Failed to replant block at " + b.getLocation(), e);
-                    }
+                    shouldProcess = true;
                 }
             }
 
-            job.clear();
-            release(head);
+            if (shouldProcess) {
+                try {
+                    replant(job);
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to replant block at " + b.getLocation(), e);
+                }
+                job.clear();
+                release(head);
+                processed++;
+            } else {
+                if (unprocessedHead == -1) {
+                    unprocessedHead = head;
+                } else {
+                    pool[unprocessedTail].next = head;
+                }
+                unprocessedTail = head;
+            }
+
             head = next;
-            processed++;
+        }
+
+        if (unprocessedHead != -1) {
+            pool[unprocessedTail].next = -1;
+            int nextSlot = (cursor + 1) & TIME_WHEEL_MASK;
+            pool[unprocessedTail].next = wheelHeads[nextSlot];
+            wheelHeads[nextSlot] = unprocessedHead;
         }
 
         wheelHeads[cursor] = head;
@@ -135,7 +160,12 @@ public final class ReplantQueue {
         Material plant = job.plantMaterial;
         int targetAge = job.targetAge;
 
-        int maxAge = ageMetaRegistry.get(plant).maximumAge;
+        AgeMetaRegistry.AgeMeta meta = ageMetaRegistry.get(plant);
+        if (meta == null) {
+            plugin.getLogger().warning("No age data found for plant: " + plant + ", skipping replant at " + block.getLocation());
+            return;
+        }
+        int maxAge = meta.maximumAge;
 
         if (plant == Material.COCOA) {
             BlockFace face = job.cocoaFacingDirection;
