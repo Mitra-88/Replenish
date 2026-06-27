@@ -1,31 +1,36 @@
 > [!IMPORTANT]
-> This plugin is production-usable and works reliably in standard scenarios. However, it is still under active development and may contain minor edge-case bugs. These are uncommon and should not affect typical gameplay usage.
+> Production-ready for standard gameplay. A few edge cases are still being smoothed out — nothing that should affect normal farming use.
 
 # Replenish 🌾 – auto-replant QoL
 
-Small, blazingly fast, crop QoL plugin for Bukkit/Spigot/Paper 26.1+.
-Inspired by the **Replenish** enchant from Hypixel SkyBlock, break a mature crop → it replants itself.
+Tiny, blazing-fast auto-replant plugin for Bukkit/Spigot/Paper 26.2+.
+Inspired by the **Replenish** enchant from Hypixel SkyBlock.
+
+Break a fully-grown crop → it instantly replants itself.
+
+![Preview](assets/output.webp)
 
 ---
 
 ## What it does
 
-* ✅ **Auto-replants** Wheat, Carrots, Potatoes, Nether Wart, and Cocoa
-* 🧠 **Age-aware**: if a crop isn’t fully grown, it goes back down at the **same age**
-* 🎒 **Seed requirement (configurable)**: optionally consumes 1 seed from the player (main inv or off-hand)
-* 🧲 **Direct pickup (configurable)**: drops go straight into the player inventory
-* 🪓 **Tool checks**: Hoes for crops, Axes for cocoa. No cheese.
-* 🧱 **Cocoa-aware**: finds jungle wood and keeps the correct facing on replant
-* 💎 **Fortune-respecting**: uses Bukkit drops with your tool’s enchants
-* ⚡️ **High-throughput**: time-wheel queue, rate-limited per tick so servers don’t melt
+- 🌾 Auto-replants Wheat, Carrots, Potatoes, Nether Wart and Cocoa
+- 🌱 Immature crops keep their current growth stage
+- 🎒 Optional seed consumption
+- 📦 Optional direct pickup into your inventory
+- 🪓 Requires the correct tool (Hoes / Axes)
+- 🧭 Correctly replants Cocoa with the proper facing
+- 🍀 Fortune enchantments work normally
+- ⚡ Extremely lightweight and designed for large farms
+
 ---
 
 ## Quick install
 
 1. Drop the JAR into `plugins/`
-2. Start the server once to generate config
-3. Tweak `plugins/Replenish/config.yml` if you want
-4. Done. Go farm.
+2. Start the server
+3. Edit `plugins/Replenish/config.yml` if desired
+4. Done.
 
 ---
 
@@ -44,9 +49,11 @@ Inspired by the **Replenish** enchant from Hypixel SkyBlock, break a mature crop
 
 ## Commands & permissions
 
-`/replenish status` – shows current settings
-`/replenish toggle` – flips global enable/disable
-`/replenish reload` – reloads config
+| Command             | Description               |
+|---------------------|---------------------------|
+| `/replenish status` | Show current settings     |
+| `/replenish toggle` | Enable/disable the plugin |
+| `/replenish reload` | Reload the configuration  |
 
 Permissions:
 
@@ -62,15 +69,10 @@ Permissions:
 
 ```yaml
 enabled: true
-requirePlayerSeed: true
-directPickup: true
-
-# 1 tick = 50ms (Minecraft standard)
-replantDelayTicks: 1
-
-# replant jobs processed per server tick (bump if server is strong)
-maxReplantsPerTick: 4096
-
+requirePlayerSeed: true     # Must have seeds in inventory
+directPickup: true          # Drops go straight to you
+replantDelayTicks: 1        # 1 tick = 50ms
+maxReplantsPerTick: 4096    # replant jobs processed per server tick (bump if server is strong)
 crops:
   wheat: true
   carrots: true
