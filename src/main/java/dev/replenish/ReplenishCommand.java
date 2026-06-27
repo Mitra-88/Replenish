@@ -8,7 +8,6 @@ import java.util.*;
 @SuppressWarnings("NullableProblems")
 public class ReplenishCommand implements CommandExecutor, TabCompleter {
     private final ReplenishPlugin plugin;
-    private static final List<String> SUBCOMMANDS = Arrays.asList("status", "toggle", "reload");
 
     private static final String PREFIX = "&8[&eReplenish&8] &7";
     private static final String ARROW = "&8» ";
@@ -28,12 +27,12 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     }
 
     private static String usage(String base) {
-        return ARROW + "&cUsage: &7/" + base + " &f<status | toggle | reload>";
+        return PREFIX + ARROW + "&cUsage: &7/" + base + " &f<status | toggle | reload>";
     }
 
     private boolean isDenied(CommandSender sender, String perm) {
         if (!sender.hasPermission(perm)) {
-            send(sender, ARROW + "&cPermission denied. &8(&7" + perm + "&8)");
+            send(sender, PREFIX + ARROW + "&cPermission denied. &8(&7" + perm + "&8)");
             return true;
         }
         return false;
@@ -54,7 +53,8 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
                 boolean nowEnabled = !plugin.isEnabledGlobally();
                 plugin.getConfig().set("enabled", nowEnabled);
                 plugin.saveConfig();
-                plugin.reloadLocalConfig();
+
+                plugin.setGloballyEnabled(nowEnabled);
 
                 String state = nowEnabled ? "&a&lENABLED" : "&c&lDISABLED";
                 sendPrefixed(sender, "Global replenish is now " + state + "&7.");
@@ -115,9 +115,19 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase(Locale.ROOT);
-            return SUBCOMMANDS.stream()
-                    .filter(s -> s.startsWith(prefix))
-                    .toList();
+            List<String> allowed = new ArrayList<>(3);
+
+            if (sender.hasPermission("replenish.status") && "status".startsWith(prefix)) {
+                allowed.add("status");
+            }
+            if (sender.hasPermission("replenish.toggle") && "toggle".startsWith(prefix)) {
+                allowed.add("toggle");
+            }
+            if (sender.hasPermission("replenish.reload") && "reload".startsWith(prefix)) {
+                allowed.add("reload");
+            }
+
+            return allowed;
         }
         return Collections.emptyList();
     }
