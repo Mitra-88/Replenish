@@ -2,6 +2,7 @@ package dev.replenish;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -23,36 +24,42 @@ public final class DropPickupManager {
         for (ItemStack stack : drops) {
             if (stack == null || stack.getAmount() <= 0 || stack.getType().isAir()) continue;
 
+            int originalAmount = stack.getAmount();
+
             Map<Integer, ItemStack> leftovers = inventory.addItem(stack);
 
             if (leftovers.isEmpty()) {
                 anyAdded = true;
-            } else if (world != null) {
+            } else {
+                int leftoverAmount = 0;
                 for (ItemStack leftover : leftovers.values()) {
-                    if (leftover == null || leftover.getAmount() <= 0) continue;
-                    if (leftover.getAmount() < stack.getAmount()) {
-                        anyAdded = true;
+                    if (leftover != null && leftover.getAmount() > 0) {
+                        leftoverAmount += leftover.getAmount();
+                        if (world != null) {
+                            world.dropItemNaturally(dropLocation, leftover);
+                        }
                     }
-                    world.dropItemNaturally(dropLocation, leftover);
+                }
+                if (leftoverAmount < originalAmount) {
+                    anyAdded = true;
                 }
             }
         }
+
         if (anyAdded) {
-            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.25f, 1.2f);
+            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, SoundCategory.PLAYERS, 0.25f, 1.2f);
         }
     }
 
     public static Location centeredDropLocation(Location target) {
         if (target == null) return null;
-        World world = target.getWorld();
-        Location out = new Location(
-                world,
+
+        return new Location(
+                target.getWorld(),
                 target.getBlockX() + 0.5,
                 target.getBlockY() + 0.5,
-                target.getBlockZ() + 0.5
+                target.getBlockZ() + 0.5,
+                0f, 0f
         );
-        out.setYaw(0f);
-        out.setPitch(0f);
-        return out;
     }
 }
