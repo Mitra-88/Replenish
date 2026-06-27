@@ -1,12 +1,14 @@
 package dev.replenish;
 
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ReplenishPlugin extends JavaPlugin {
@@ -15,7 +17,7 @@ public class ReplenishPlugin extends JavaPlugin {
     private static final int DEFAULT_MAX_REPLANTS = 4096;
     private static final int MIN_REPLANTS_PER_TICK = 256;
 
-    private final AtomicReference<ConfigCache> configCacheRef = new AtomicReference<>(new ConfigCache());
+    private final AtomicReference<ConfigCache> configCacheRef = new AtomicReference<>(ConfigCache.getDefault());
     private volatile ReplantQueue replantQueue;
     private AgeMetaRegistry ageMetaRegistry;
 
@@ -23,17 +25,16 @@ public class ReplenishPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         ageMetaRegistry = new AgeMetaRegistry(this);
-        reloadLocalConfig();
 
-        replantQueue = new ReplantQueue(this, getConfigCache().maxReplantsPerTick, ageMetaRegistry);
-        replantQueue.start();
+        reloadLocalConfig();
 
         getServer().getPluginManager().registerEvents(new ReplenishListener(this, ageMetaRegistry), this);
 
-        ReplenishCommand replenishCommand = new ReplenishCommand(this);
-        if (getCommand("replenish") != null) {
-            Objects.requireNonNull(getCommand("replenish")).setExecutor(replenishCommand);
-            Objects.requireNonNull(getCommand("replenish")).setTabCompleter(replenishCommand);
+        PluginCommand command = getCommand("replenish");
+        if (command != null) {
+            ReplenishCommand replenishCommand = new ReplenishCommand(this);
+            command.setExecutor(replenishCommand);
+            command.setTabCompleter(replenishCommand);
         }
     }
 
@@ -46,15 +47,8 @@ public class ReplenishPlugin extends JavaPlugin {
         reloadConfig();
         FileConfiguration config = getConfig();
 
-        int delayTicks = Math.max(
-                1,
-                config.getInt("replantDelayTicks", DEFAULT_REPLANT_DELAY_TICKS)
-        );
-
-        int maxPerTick = Math.max(
-                MIN_REPLANTS_PER_TICK,
-                config.getInt("maxReplantsPerTick", DEFAULT_MAX_REPLANTS)
-        );
+        int delayTicks = Math.max(1, config.getInt("replantDelayTicks", DEFAULT_REPLANT_DELAY_TICKS));
+        int maxPerTick = Math.max(MIN_REPLANTS_PER_TICK, config.getInt("maxReplantsPerTick", DEFAULT_MAX_REPLANTS));
 
         ConfigCache newCache = ConfigCache.from(config, delayTicks, maxPerTick);
         configCacheRef.set(newCache);
@@ -62,13 +56,25 @@ public class ReplenishPlugin extends JavaPlugin {
         if (replantQueue != null) {
             replantQueue.stop();
         }
-
         replantQueue = new ReplantQueue(this, maxPerTick, ageMetaRegistry);
         replantQueue.start();
     }
 
     public boolean isEnabledGlobally() {
         return getConfigCache().enabled;
+    }
+
+    public void setGloballyEnabled(boolean enabled) {
+        ConfigCache current = getConfigCache();
+        ConfigCache newCache = new ConfigCache(
+                enabled,
+                current.requirePlayerSeed,
+                current.directPickup,
+                current.replantDelayTicks,
+                current.maxReplantsPerTick,
+                current.cropEnabled
+        );
+        configCacheRef.set(newCache);
     }
 
     public boolean isCropEnabled(Material crop) {
@@ -79,11 +85,7 @@ public class ReplenishPlugin extends JavaPlugin {
         return configCacheRef.get();
     }
 
-    public void enqueueReplant(org.bukkit.block.Block block,
-                               org.bukkit.Material plantMaterial,
-                               int delayTicks,
-                               int targetAge,
-                               org.bukkit.block.BlockFace cocoaFacingDirection) {
+    public void enqueueReplant(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
         ReplantQueue queue = this.replantQueue;
         if (queue != null) {
             queue.enqueue(block, plantMaterial, delayTicks, targetAge, cocoaFacingDirection);
@@ -98,13 +100,18 @@ public class ReplenishPlugin extends JavaPlugin {
         final int maxReplantsPerTick;
         final Map<Material, Boolean> cropEnabled;
 
-        private ConfigCache() {
-            this.enabled = true;
-            this.requirePlayerSeed = true;
-            this.directPickup = true;
-            this.replantDelayTicks = DEFAULT_REPLANT_DELAY_TICKS;
-            this.maxReplantsPerTick = DEFAULT_MAX_REPLANTS;
-            this.cropEnabled = defaultCrops();
+        private ConfigCache(boolean enabled, boolean requirePlayerSeed, boolean directPickup,
+                            int replantDelayTicks, int maxReplantsPerTick, Map<Material, Boolean> cropEnabled) {
+            this.enabled = enabled;
+            this.requirePlayerSeed = requirePlayerSeed;
+            this.directPickup = directPickup;
+            this.replantDelayTicks = replantDelayTicks;
+            this.maxReplantsPerTick = maxReplantsPerTick;
+            this.cropEnabled = cropEnabled;
+        }
+
+        static ConfigCache getDefault() {
+            return new ConfigCache(true, true, true, DEFAULT_REPLANT_DELAY_TICKS, DEFAULT_MAX_REPLANTS, defaultCrops());
         }
 
         static ConfigCache from(FileConfiguration config, int delayTicks, int maxPerTick) {
@@ -116,16 +123,6 @@ public class ReplenishPlugin extends JavaPlugin {
                     maxPerTick,
                     readCrops(config)
             );
-        }
-
-        private ConfigCache(boolean enabled, boolean requirePlayerSeed, boolean directPickup,
-                            int replantDelayTicks, int maxReplantsPerTick, Map<Material, Boolean> cropEnabled) {
-            this.enabled = enabled;
-            this.requirePlayerSeed = requirePlayerSeed;
-            this.directPickup = directPickup;
-            this.replantDelayTicks = replantDelayTicks;
-            this.maxReplantsPerTick = maxReplantsPerTick;
-            this.cropEnabled = cropEnabled;
         }
 
         private static Map<Material, Boolean> readCrops(FileConfiguration config) {
