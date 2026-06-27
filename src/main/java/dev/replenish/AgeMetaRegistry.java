@@ -1,14 +1,17 @@
 package dev.replenish;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 
 public final class AgeMetaRegistry {
 
@@ -20,8 +23,6 @@ public final class AgeMetaRegistry {
         }
     }
 
-    private static final AgeMeta DEFAULT = new AgeMeta(0);
-
     private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
             Material.WHEAT,
             Material.CARROTS,
@@ -30,22 +31,26 @@ public final class AgeMetaRegistry {
             Material.COCOA
     );
 
-    private final Map<Material, AgeMeta> metadataByMaterial = new EnumMap<>(Material.class);
+    private final Map<Material, AgeMeta> metadataByMaterial;
 
     public AgeMetaRegistry(Plugin plugin) {
+        Map<Material, AgeMeta> tempMap = new EnumMap<>(Material.class);
+
         for (Material material : SUPPORTED_CROPS) {
             try {
-                BlockData data = plugin.getServer().createBlockData(material);
+                BlockData data = Bukkit.createBlockData(material);
                 if (data instanceof Ageable ageable) {
-                    metadataByMaterial.put(material, new AgeMeta(ageable.getMaximumAge()));
+                    tempMap.put(material, new AgeMeta(ageable.getMaximumAge()));
                 }
-            } catch (Throwable ignored) {
-                plugin.getLogger().fine("Age meta scan skipped for " + material + ": " + ignored.getMessage());
+            } catch (Throwable error) {
+                plugin.getLogger().log(Level.WARNING, "Age meta scan skipped for " + material, error);
             }
         }
+
+        this.metadataByMaterial = Collections.unmodifiableMap(tempMap);
     }
 
     public AgeMeta get(Material material) {
-        return metadataByMaterial.getOrDefault(material, DEFAULT);
+        return metadataByMaterial.get(material);
     }
 }
