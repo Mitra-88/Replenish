@@ -1,13 +1,8 @@
 enabled: true
-requirePlayerSeed: true
-directPickup: true
-
-# 1 tick = 50ms (Minecraft standard)
-replantDelayTicks: 1
-
-# replant jobs processed per server tick (bump if server is strong)
-maxReplantsPerTick: 4096
-
+requirePlayerSeed: true   # consume 1 seed from inventory on mature harvest
+directPickup: true        # drops go straight to the player
+replantDelayTicks: 1      # 1 tick = 50ms
+maxReplantsPerTick: 4096  # raise this on beefier servers
 crops:
   wheat: true
   carrots: true
