@@ -18,37 +18,23 @@ public final class ReplantQueue {
     private static final int TIME_WHEEL_BITS = 13;
     private static final int TIME_WHEEL_SIZE = 1 << TIME_WHEEL_BITS;
     private static final int TIME_WHEEL_MASK = TIME_WHEEL_SIZE - 1;
+    private static final int INITIAL_POOL_SIZE = 1 << 14;
 
-    private static final class Job {
-        Block block;
-        Material plantMaterial;
-        int targetAge;
-        BlockFace cocoaFacingDirection;
-        int next = -1;
+    private static final BlockFace[] FACES = {
+            BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
+    };
 
-        void set(Block block, Material plantMaterial, int targetAge, BlockFace cocoaFacingDirection) {
-            this.block = block;
-            this.plantMaterial = plantMaterial;
-            this.targetAge = targetAge;
-            this.cocoaFacingDirection = cocoaFacingDirection;
-            this.next = -1;
-        }
+    private Block[] poolBlocks;
+    private Material[] poolMaterials;
+    private int[] poolMeta;
+    private int[] poolNext;
 
-        void clear() {
-            block = null;
-            plantMaterial = null;
-            cocoaFacingDirection = null;
-            next = -1;
-        }
-    }
+    private final int[] wheelHeads = new int[TIME_WHEEL_SIZE];
+    private int freeHead = -1;
 
     private final Plugin plugin;
     private final AgeMetaRegistry ageMetaRegistry;
     private final int maxPerTick;
-
-    private final int[] wheelHeads = new int[TIME_WHEEL_SIZE];
-    private Job[] pool = new Job[4096];
-    private int freeHead = -1;
 
     private int cursor = 0;
     private int taskId = -1;
@@ -63,78 +49,112 @@ public final class ReplantQueue {
         primePool();
     }
 
-    public void start() {
+    public synchronized void start() {
         if (started) return;
         started = true;
         taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, this::tick, 1L, 1L);
     }
 
-    public void stop() {
+    public synchronized void stop() {
         if (!started) return;
         started = false;
         if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
         taskId = -1;
+
+        freeHead = -1;
+        for (int i = poolBlocks.length - 1; i >= 0; i--) {
+            poolBlocks[i] = null;
+            poolMaterials[i] = null;
+            poolMeta[i] = 0;
+            poolNext[i] = freeHead;
+            freeHead = i;
+        }
         Arrays.fill(wheelHeads, -1);
         cursor = 0;
     }
 
     public void enqueue(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
-        int delay = delayTicks & TIME_WHEEL_MASK;
-        if (delay == 0) delay = 1;
+        int delay = Math.max(1, delayTicks);
+        if (delay >= TIME_WHEEL_SIZE) {
+            delay = TIME_WHEEL_SIZE - 1;
+        }
         int slot = (cursor + delay) & TIME_WHEEL_MASK;
 
         int index = acquire();
-        Job job = pool[index];
-        job.set(block, plantMaterial, targetAge, cocoaFacingDirection);
 
-        job.next = wheelHeads[slot];
+        poolBlocks[index] = block;
+        poolMaterials[index] = plantMaterial;
+
+        int safeAge = Math.max(0, targetAge) & 0xFF;
+        poolMeta[index] = safeAge | ((faceToOrdinal(cocoaFacingDirection) & 0x3) << 8);
+
+        poolNext[index] = wheelHeads[slot];
         wheelHeads[slot] = index;
     }
 
     private void tick() {
         int head = wheelHeads[cursor];
-        int processed = 0;
+        if (head == -1) {
+            cursor = (cursor + 1) & TIME_WHEEL_MASK;
+            return;
+        }
 
-        long lastChunkKey = Long.MIN_VALUE;
+        int processed = 0;
+        World lastWorld = null;
+        int lastChunkX = Integer.MIN_VALUE;
+        int lastChunkZ = Integer.MIN_VALUE;
         boolean lastChunkLoaded = false;
 
         int unprocessedHead = -1;
         int unprocessedTail = -1;
 
-        while (head != -1 && processed < maxPerTick) {
-            Job job = pool[head];
-            int next = job.next;
+        while (head != -1) {
+            if (processed >= maxPerTick) break;
 
-            Block b = job.block;
+            Block b = poolBlocks[head];
+            int next = poolNext[head];
+
+            if (b == null) {
+                release(head);
+                head = next;
+                continue;
+            }
+
+            World world = b.getWorld();
+
             boolean shouldProcess = false;
+            int chunkX = b.getX() >> 4;
+            int chunkZ = b.getZ() >> 4;
 
-            if (b != null) {
-                World world = b.getWorld();
-                long currentKey = ((long) (b.getX() >> 4) << 32) | ((b.getZ() >> 4) & 0xFFFFFFFFL);
-                if (currentKey != lastChunkKey) {
-                    lastChunkKey = currentKey;
-                    lastChunkLoaded = world.isChunkLoaded(b.getX() >> 4, b.getZ() >> 4);
-                }
+            if (world != lastWorld || chunkX != lastChunkX || chunkZ != lastChunkZ) {
+                lastWorld = world;
+                lastChunkX = chunkX;
+                lastChunkZ = chunkZ;
 
-                if (lastChunkLoaded) {
-                    shouldProcess = true;
+                try {
+                    lastChunkLoaded = world.isChunkLoaded(chunkX, chunkZ);
+                } catch (Exception e) {
+                    lastChunkLoaded = false;
                 }
+            }
+
+            if (lastChunkLoaded) {
+                shouldProcess = true;
             }
 
             if (shouldProcess) {
                 try {
-                    replant(job);
+                    replant(head);
                 } catch (Exception e) {
-                    plugin.getLogger().log(Level.SEVERE, "Failed to replant block at " + b.getLocation(), e);
+                    plugin.getLogger().log(Level.WARNING, "Failed to replant crop at " + locString(b), e);
                 }
-                job.clear();
                 release(head);
                 processed++;
             } else {
                 if (unprocessedHead == -1) {
                     unprocessedHead = head;
                 } else {
-                    pool[unprocessedTail].next = head;
+                    poolNext[unprocessedTail] = head;
                 }
                 unprocessedTail = head;
             }
@@ -142,91 +162,140 @@ public final class ReplantQueue {
             head = next;
         }
 
+        int nextSlot = (cursor + 1) & TIME_WHEEL_MASK;
+
+        if (head != -1) {
+            int tail = head;
+            while (poolNext[tail] != -1) {
+                tail = poolNext[tail];
+            }
+            poolNext[tail] = wheelHeads[nextSlot];
+            wheelHeads[nextSlot] = head;
+        }
+
         if (unprocessedHead != -1) {
-            pool[unprocessedTail].next = -1;
-            int nextSlot = (cursor + 1) & TIME_WHEEL_MASK;
-            pool[unprocessedTail].next = wheelHeads[nextSlot];
+            poolNext[unprocessedTail] = wheelHeads[nextSlot];
             wheelHeads[nextSlot] = unprocessedHead;
         }
 
-        wheelHeads[cursor] = head;
+        wheelHeads[cursor] = -1;
         cursor = (cursor + 1) & TIME_WHEEL_MASK;
     }
 
-    private void replant(Job job) {
-        Block block = job.block;
-        if (!block.getType().isAir()) return;
+    private void replant(int index) {
+        Block block = poolBlocks[index];
+        if (block == null || !block.getType().isAir()) return;
 
-        Material plant = job.plantMaterial;
-        int targetAge = job.targetAge;
+        Material plant = poolMaterials[index];
+        if (plant == null) return;
+
+        int metadata = poolMeta[index];
+        int targetAge = metadata & 0xFF;
+        BlockFace face = ordinalToFace((metadata >> 8) & 0x3);
+
+        if (ageMetaRegistry == null) return;
 
         AgeMetaRegistry.AgeMeta meta = ageMetaRegistry.get(plant);
         if (meta == null) {
-            plugin.getLogger().warning("No age data found for plant: " + plant + ", skipping replant at " + block.getLocation());
+            block.getWorld();
+            plugin.getLogger().warning("No age data found for plant: " + plant + ", skipping replant at " + locString(block));
             return;
         }
         int maxAge = meta.maximumAge;
 
+        BlockData data = plant.createBlockData();
+
         if (plant == Material.COCOA) {
-            BlockFace face = job.cocoaFacingDirection;
-            if (face == null) return;
-            block.setType(Material.COCOA, false);
-            BlockData data = block.getBlockData();
-            if (data instanceof Directional directional) directional.setFacing(face);
-            applyAge(block, data, targetAge, maxAge);
-            return;
+            if (data instanceof Directional directional) {
+                directional.setFacing(face);
+                Block attached = block.getRelative(face);
+                String attachedName = attached.getType().name();
+
+                if (!attachedName.contains("JUNGLE_LOG") && !attachedName.contains("JUNGLE_WOOD")) {
+                    return;
+                }
+            } else {
+                return;
+            }
+        } else {
+            Material below = block.getRelative(BlockFace.DOWN).getType();
+            if (plant == Material.NETHER_WART) {
+                if (below != Material.SOUL_SAND) return;
+            } else {
+                if (below != Material.FARMLAND) return;
+            }
         }
 
-        Material below = block.getRelative(BlockFace.DOWN).getType();
-        if (plant == Material.NETHER_WART) {
-            if (below != Material.SOUL_SAND) return;
-            block.setType(Material.NETHER_WART, false);
-            applyAge(block, block.getBlockData(), targetAge, maxAge);
-            return;
+        if (data instanceof Ageable ageable) {
+            if (maxAge > 0) {
+                ageable.setAge(Math.min(maxAge, targetAge));
+            }
         }
 
-        if (below != Material.FARMLAND) return;
-        block.setType(plant, false);
-        applyAge(block, block.getBlockData(), targetAge, maxAge);
+        block.setBlockData(data, false);
     }
 
-    private void applyAge(Block block, BlockData data, int age, int max) {
-        if (data instanceof Ageable ageable) {
-            if (max > 0) ageable.setAge(Math.max(0, Math.min(max, age)));
-            block.setBlockData(ageable, false);
-        } else {
-            block.setBlockData(data, false);
-        }
+    private String locString(Block b) {
+        World w = b.getWorld();
+        String wName = w.getName();
+        return wName + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
     }
 
     private void primePool() {
-        if (pool.length < 1024) pool = new Job[1024];
-        for (int i = 0; i < pool.length; i++) {
-            pool[i] = new Job();
-            pool[i].next = freeHead;
+        int size = INITIAL_POOL_SIZE;
+        poolBlocks = new Block[size];
+        poolMaterials = new Material[size];
+        poolMeta = new int[size];
+        poolNext = new int[size];
+
+        for (int i = size - 1; i >= 0; i--) {
+            poolNext[i] = freeHead;
+            freeHead = i;
+        }
+    }
+
+    private void growPool() {
+        int oldSize = poolBlocks.length;
+        int newSize = oldSize << 1;
+
+        poolBlocks = Arrays.copyOf(poolBlocks, newSize);
+        poolMaterials = Arrays.copyOf(poolMaterials, newSize);
+        poolMeta = Arrays.copyOf(poolMeta, newSize);
+        poolNext = Arrays.copyOf(poolNext, newSize);
+
+        for (int i = newSize - 1; i >= oldSize; i--) {
+            poolBlocks[i] = null;
+            poolMaterials[i] = null;
+            poolMeta[i] = 0;
+            poolNext[i] = freeHead;
             freeHead = i;
         }
     }
 
     private int acquire() {
-        if (freeHead == -1) {
-            int oldSize = pool.length;
-            int newSize = oldSize * 2;
-            pool = Arrays.copyOf(pool, newSize);
-            for (int i = oldSize; i < newSize; i++) {
-                pool[i] = new Job();
-                pool[i].next = freeHead;
-                freeHead = i;
-            }
-        }
+        if (freeHead == -1) growPool();
         int index = freeHead;
-        freeHead = pool[index].next;
-        pool[index].next = -1;
+        freeHead = poolNext[index];
+        poolNext[index] = -1;
         return index;
     }
 
     private void release(int index) {
-        pool[index].next = freeHead;
+        poolBlocks[index] = null;
+        poolMaterials[index] = null;
+        poolMeta[index] = 0;
+        poolNext[index] = freeHead;
         freeHead = index;
+    }
+
+    private static int faceToOrdinal(BlockFace face) {
+        if (face == BlockFace.EAST) return 1;
+        if (face == BlockFace.SOUTH) return 2;
+        if (face == BlockFace.WEST) return 3;
+        return 0;
+    }
+
+    private static BlockFace ordinalToFace(int ord) {
+        return FACES[ord & 3];
     }
 }
