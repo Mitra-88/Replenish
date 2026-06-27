@@ -28,7 +28,7 @@ jobs:
         shell: bash
 
       - name: Upload Artifact with short SHA
-        uses: actions/upload-artifact@vv7.0.1
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: Replenish-${{ steps.sha.outputs.short_sha }}
           path: target/*.jar
