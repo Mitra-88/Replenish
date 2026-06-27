@@ -95,9 +95,7 @@ public class ReplenishListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
-            if (isRelevantSeed(event.getCurrentItem()) || isRelevantSeed(event.getCursor())) {
-                invalidateWithCooldown(player);
-            }
+            invalidateWithCooldown(player);
         }
     }
 
@@ -145,12 +143,15 @@ public class ReplenishListener implements Listener {
         Material cropType = block.getType();
         if (!SUPPORTED_CROPS.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
-        Material toolInHandType = player.getInventory().getItemInMainHand().getType();
-        boolean hasRequiredTool = switch (cropType) {
-            case COCOA -> AXE_TOOLS.contains(toolInHandType);
-            case WHEAT, CARROTS, POTATOES, NETHER_WART -> HOE_TOOLS.contains(toolInHandType);
-            default -> true;
-        };
+        ItemStack toolInHand = player.getInventory().getItemInMainHand();
+        Material toolInHandType = toolInHand.getType();
+
+        boolean hasRequiredTool = false;
+        if (cropType == Material.COCOA) {
+            hasRequiredTool = AXE_TOOLS.contains(toolInHandType);
+        } else if (cropType == Material.WHEAT || cropType == Material.CARROTS || cropType == Material.POTATOES || cropType == Material.NETHER_WART) {
+            hasRequiredTool = HOE_TOOLS.contains(toolInHandType);
+        }
         if (!hasRequiredTool) return;
 
         if (cropType == Material.COCOA) {
@@ -181,12 +182,9 @@ public class ReplenishListener implements Listener {
         }
 
         event.setDropItems(false);
-        var toolInHand = player.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
 
         BlockFace originalCocoaFacing = (cropType == Material.COCOA && originalBlockData instanceof Directional directional) ? directional.getFacing() : null;
-
-        block.setType(Material.AIR, false);
 
         if (!drops.isEmpty()) {
             Location dropLocation = DropPickupManager.centeredDropLocation(block.getLocation());
@@ -244,13 +242,11 @@ public class ReplenishListener implements Listener {
     }
 
     private static Material seedFor(Material crop) {
-        return switch (crop) {
-            case WHEAT -> Material.WHEAT_SEEDS;
-            case CARROTS -> Material.CARROT;
-            case POTATOES -> Material.POTATO;
-            case NETHER_WART -> Material.NETHER_WART;
-            case COCOA -> Material.COCOA_BEANS;
-            default -> null;
-        };
+        if (crop == Material.WHEAT) return Material.WHEAT_SEEDS;
+        if (crop == Material.CARROTS) return Material.CARROT;
+        if (crop == Material.POTATOES) return Material.POTATO;
+        if (crop == Material.NETHER_WART) return Material.NETHER_WART;
+        if (crop == Material.COCOA) return Material.COCOA_BEANS;
+        return null;
     }
 }
