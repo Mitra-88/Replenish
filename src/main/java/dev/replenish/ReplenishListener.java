@@ -79,7 +79,7 @@ public class ReplenishListener implements Listener {
       EnumSet.of(
           Material.WOODEN_AXE,
           Material.STONE_AXE,
-          Material.COPPER_HOE,
+          Material.COPPER_AXE,
           Material.IRON_AXE,
           Material.GOLDEN_AXE,
           Material.DIAMOND_AXE,
