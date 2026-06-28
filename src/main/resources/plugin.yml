@@ -8,7 +8,7 @@ authors: [ "Mitra-88" ]
 commands:
   replenish:
     description: Replenish admin command
-    usage: /replenish <toggle|reload|status>
+    usage: /replenish <toggle|reload|status|version>
     permission: replenish.use
     permission-message: "&cYou do not have permission to use this command."
 
@@ -21,6 +21,7 @@ permissions:
       replenish.toggle: true
       replenish.reload: true
       replenish.status: true
+      replenish.version: true
 
   replenish.use:
     description: "Allows using /replenish base command."
@@ -36,4 +37,8 @@ permissions:
 
   replenish.status:
     description: "Allows viewing current Replenish status."
+    default: true
+
+  replenish.version:
+    description: "Allows viewing version information."
     default: true

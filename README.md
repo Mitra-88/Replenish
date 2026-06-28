@@ -1,6 +1,6 @@
 # Replenish 🌾
 
-Tiny, blazing-fast auto-replant plugin for Bukkit/Spigot/Paper 26.2+.
+Tiny, blazing-fast auto-replant plugin for Spigot/Paper 26.2+.
 Inspired by the **Replenish** enchant from Hypixel SkyBlock.
 
 Break a fully-grown crop → it instantly replants itself.
@@ -46,15 +46,17 @@ Break a fully-grown crop → it instantly replants itself.
 
 ## Commands & permissions
 
-| Command             | Description               |
-|---------------------|---------------------------|
-| `/replenish status` | Show current settings     |
-| `/replenish toggle` | Enable/disable the plugin |
-| `/replenish reload` | Reload the configuration  |
+| Command              | Description               |
+|----------------------|---------------------------|
+| `/replenish status`  | Show current settings     |
+| `/replenish version` | Show plugin version       |
+| `/replenish toggle`  | Enable/disable the plugin |
+| `/replenish reload`  | Reload the configuration  |
 
 Permissions:
 
 * `replenish.status` (default: **true**)
+* `replenish.version` (default: **true**)
 * `replenish.use` (default: **op**)
 * `replenish.toggle` (default: **op**)
 * `replenish.reload` (default: **op**)

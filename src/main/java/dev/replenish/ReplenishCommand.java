@@ -127,6 +127,8 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         return true;
       }
       case "version" -> {
+        if (isDenied(sender, "replenish.version")) return true;
+
         send(sender, "");
         send(sender, "&8&m      &8[ &e&lVersion Info &8]&m      &r");
         send(sender, "");
@@ -160,7 +162,7 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
       if (sender.hasPermission("replenish.reload") && "reload".startsWith(prefix)) {
         allowed.add("reload");
       }
-      if ("version".startsWith(prefix)) {
+      if (sender.hasPermission("replenish.version") && "version".startsWith(prefix)) {
         allowed.add("version");
       }
 
