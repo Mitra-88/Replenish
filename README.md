@@ -68,14 +68,17 @@ Permissions:
 
 ```yaml
 enabled: true
-requirePlayerSeed: true     # Must have seeds in inventory
-directPickup: true          # Drops go straight to you
-replantDelayTicks: 1        # 1 tick = 50ms
-maxReplantsPerTick: 4096    # replant jobs processed per server tick (bump if server is strong)
+requirePlayerSeed: true
+directPickup: true
+replantDelayTicks: 1
+maxReplantsPerTick: 4096
 crops:
   wheat: true
   carrots: true
   potatoes: true
   nether_wart: true
   cocoa: true
+  beetroots: true
+  torchflower: true
+  pitcher_crop: true
 ```

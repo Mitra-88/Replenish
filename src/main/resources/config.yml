@@ -1,10 +1,10 @@
 config-version: 2         # DON'T TOUCH THIS!!!
 
-enabled: true
-requirePlayerSeed: true   # consume 1 seed from inventory on mature harvest
-directPickup: true        # drops go straight to the player
-replantDelayTicks: 1      # 1 tick = 50ms
-maxReplantsPerTick: 4096  # raise this on beefier servers
+enabled: true              # master switch: false disables all replanting globally
+requirePlayerSeed: true    # consume 1 seed from inventory on mature harvest
+directPickup: true         # drops go straight to the player
+replantDelayTicks: 1       # 1 tick = 50ms
+maxReplantsPerTick: 4096   # maximum crops replanted per tick (20 ticks/second). raise this on beefier servers if replants lag behind, lower it on weaker servers to reduce load
 crops:
   wheat: true
   carrots: true
