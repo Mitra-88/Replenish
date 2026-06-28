@@ -61,11 +61,12 @@ public class ReplenishPlugin extends JavaPlugin {
     reloadConfig();
     FileConfiguration config = getConfig();
 
+    boolean regenerated = false;
     if (!config.contains("config-version") || config.getInt("config-version", 1) < 2) {
       getLogger().warning("Config version mismatch. Generating missing values...");
       config.options().copyDefaults(true);
-      saveConfig();
-      getLogger().info("Done.");
+      config.set("config-version", 2);
+      regenerated = true;
     }
 
     int delayTicks = Math.max(1, config.getInt("replantDelayTicks", DEFAULT_REPLANT_DELAY_TICKS));
@@ -80,6 +81,11 @@ public class ReplenishPlugin extends JavaPlugin {
     }
     replantQueue = new ReplantQueue(this, maxPerTick, ageMetaRegistry);
     replantQueue.start();
+
+    if (regenerated) {
+      saveConfig();
+      getLogger().info("Config updated.");
+    }
   }
 
   public boolean isEnabledGlobally() {
@@ -164,6 +170,9 @@ public class ReplenishPlugin extends JavaPlugin {
       map.put(Material.POTATOES, config.getBoolean("crops.potatoes", true));
       map.put(Material.NETHER_WART, config.getBoolean("crops.nether_wart", true));
       map.put(Material.COCOA, config.getBoolean("crops.cocoa", true));
+      map.put(Material.BEETROOTS, config.getBoolean("crops.beetroots", true));
+      map.put(Material.TORCHFLOWER_CROP, config.getBoolean("crops.torchflower", true));
+      map.put(Material.PITCHER_CROP, config.getBoolean("crops.pitcher_crop", true));
       return map;
     }
 
@@ -174,6 +183,9 @@ public class ReplenishPlugin extends JavaPlugin {
       map.put(Material.POTATOES, true);
       map.put(Material.NETHER_WART, true);
       map.put(Material.COCOA, true);
+      map.put(Material.BEETROOTS, true);
+      map.put(Material.TORCHFLOWER_CROP, true);
+      map.put(Material.PITCHER_CROP, true);
       return map;
     }
   }
