@@ -33,6 +33,10 @@ public class ReplenishListener implements Listener {
     private final ReplenishPlugin plugin;
     private final Map<Material, Integer> maxAges;
     private final Map<UUID, Long> lastInvalidation;
+    private final Map<UUID, Long> messageCooldown;
+
+    private static final long INVALIDATION_COOLDOWN_MS = 50L;
+    private static final long MESSAGE_COOLDOWN_MS = 2000L;
 
     private static final Set<Material> SUPPORTED_CROPS = EnumSet.of(
             Material.WHEAT, Material.CARROTS, Material.POTATOES,
@@ -61,11 +65,10 @@ public class ReplenishListener implements Listener {
             Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD
     );
 
-    private static final long INVALIDATION_COOLDOWN_MS = 50L;
-
     public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ageMetaRegistry) {
         this.plugin = plugin;
         this.lastInvalidation = new HashMap<>();
+        this.messageCooldown = new HashMap<>();
 
         this.maxAges = new EnumMap<>(Material.class);
         for (Material crop : SUPPORTED_CROPS) {
@@ -92,9 +95,20 @@ public class ReplenishListener implements Listener {
         }
     }
 
+    private boolean canSendMessage(Player player) {
+        long now = System.currentTimeMillis();
+        Long last = messageCooldown.get(player.getUniqueId());
+        if (last == null || (now - last) >= MESSAGE_COOLDOWN_MS) {
+            messageCooldown.put(player.getUniqueId(), now);
+            return true;
+        }
+        return false;
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         lastInvalidation.remove(event.getPlayer().getUniqueId());
+        messageCooldown.remove(event.getPlayer().getUniqueId());
         SeedIndex.invalidate(event.getPlayer());
     }
 
@@ -154,6 +168,8 @@ public class ReplenishListener implements Listener {
         if (player.getGameMode() == GameMode.CREATIVE
                 || player.getGameMode() == GameMode.SPECTATOR) return;
 
+        if (player.isSneaking()) return;
+
         ReplenishPlugin.ConfigCache config = plugin.getConfigCache();
         if (!config.enabled) return;
 
@@ -175,9 +191,13 @@ public class ReplenishListener implements Listener {
         }
 
         if (!hasRequiredTool) {
-            String toolName = cropType == Material.COCOA ? "an axe" : "a hoe";
-            player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &7Use &e" + toolName + " &7to auto-replant!"));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            if (canSendMessage(player)) {
+                String cropName = cropType.name().replace("_", " ");
+                cropName = cropName.substring(0, 1).toUpperCase() + cropName.substring(1).toLowerCase();
+                String toolName = cropType == Material.COCOA ? "Axe" : "Hoe";
+                player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &e" + cropName + " &7requires &e" + toolName + "&7."));
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            }
             return;
         }
 
@@ -212,8 +232,12 @@ public class ReplenishListener implements Listener {
         if (wasMature && config.requirePlayerSeed) {
             if (seedMaterial == null) return;
             if (!SeedIndex.consume(player, seedMaterial)) {
-                player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &cYou need &eseeds &cto auto-replant!"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+                if (canSendMessage(player)) {
+                    String seedName = seedMaterial.name().replace("_", " ");
+                    seedName = seedName.substring(0, 1).toUpperCase() + seedName.substring(1).toLowerCase();
+                    player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &cNeed 1 &e" + seedName + "&c."));
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+                }
                 return;
             }
         }
