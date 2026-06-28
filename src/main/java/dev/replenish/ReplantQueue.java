@@ -38,7 +38,7 @@ public final class ReplantQueue {
 
     private int cursor = 0;
     private int taskId = -1;
-    private boolean started = false;
+    private volatile boolean started = false;
 
     public ReplantQueue(Plugin plugin, int maxPerTick, AgeMetaRegistry ageMetaRegistry) {
         this.plugin = plugin;
@@ -73,9 +73,11 @@ public final class ReplantQueue {
         cursor = 0;
     }
 
-    public void enqueue(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
+    public synchronized void enqueue(Block block, Material plantMaterial, int delayTicks, int targetAge, BlockFace cocoaFacingDirection) {
         int delay = Math.max(1, delayTicks);
         if (delay >= TIME_WHEEL_SIZE) {
+            plugin.getLogger().warning("Replant delay of " + delayTicks + " ticks exceeds wheel size ("
+                    + (TIME_WHEEL_SIZE - 1) + "), truncating. Block at " + locString(block));
             delay = TIME_WHEEL_SIZE - 1;
         }
         int slot = (cursor + delay) & TIME_WHEEL_MASK;
@@ -92,7 +94,9 @@ public final class ReplantQueue {
         wheelHeads[slot] = index;
     }
 
-    private void tick() {
+    private synchronized void tick() {
+        if (!started) return;
+
         int head = wheelHeads[cursor];
         if (head == -1) {
             cursor = (cursor + 1) & TIME_WHEEL_MASK;
@@ -156,6 +160,7 @@ public final class ReplantQueue {
                 } else {
                     poolNext[unprocessedTail] = head;
                 }
+                poolNext[head] = -1;
                 unprocessedTail = head;
             }
 
@@ -197,7 +202,6 @@ public final class ReplantQueue {
 
         AgeMetaRegistry.AgeMeta meta = ageMetaRegistry.get(plant);
         if (meta == null) {
-            block.getWorld();
             plugin.getLogger().warning("No age data found for plant: " + plant + ", skipping replant at " + locString(block));
             return;
         }
@@ -257,6 +261,9 @@ public final class ReplantQueue {
     private void growPool() {
         int oldSize = poolBlocks.length;
         int newSize = oldSize << 1;
+        if (newSize <= oldSize) {
+            throw new IllegalStateException("Pool size overflow: cannot grow beyond " + oldSize + " entries");
+        }
 
         poolBlocks = Arrays.copyOf(poolBlocks, newSize);
         poolMaterials = Arrays.copyOf(poolMaterials, newSize);
@@ -289,6 +296,7 @@ public final class ReplantQueue {
     }
 
     private static int faceToOrdinal(BlockFace face) {
+        if (face == null) return 0;
         if (face == BlockFace.EAST) return 1;
         if (face == BlockFace.SOUTH) return 2;
         if (face == BlockFace.WEST) return 3;
