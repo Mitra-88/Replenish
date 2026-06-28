@@ -1,5 +1,8 @@
 package dev.replenish;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -8,80 +11,89 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-
 public final class DropPickupManager {
-    private DropPickupManager() {}
+  private DropPickupManager() {}
 
-    public static void giveToPlayerOrDrop(Player player, Location dropLocation, Collection<ItemStack> drops) {
-        if (player == null || !player.isOnline() || dropLocation == null || drops == null || drops.isEmpty()) return;
+  public static void giveToPlayerOrDrop(
+      Player player, Location dropLocation, Collection<ItemStack> drops) {
+    if (player == null
+        || !player.isOnline()
+        || dropLocation == null
+        || drops == null
+        || drops.isEmpty()) return;
 
-        PlayerInventory inventory = player.getInventory();
-        World world = dropLocation.getWorld();
-        boolean anyAdded = false;
-        boolean anyDropped = false;
-        Location fallbackLoc = player.getLocation();
+    PlayerInventory inventory = player.getInventory();
+    World world = dropLocation.getWorld();
+    boolean anyAdded = false;
+    boolean anyDropped = false;
+    Location fallbackLoc = player.getLocation();
 
-        for (ItemStack stack : drops) {
-            if (stack == null || stack.getAmount() <= 0 || stack.getType().isAir()) continue;
+    for (ItemStack stack : drops) {
+      if (stack == null || stack.getAmount() <= 0 || stack.getType().isAir()) continue;
 
-            try {
-                ItemStack itemToGive = stack.clone();
-                int originalAmount = itemToGive.getAmount();
+      try {
+        ItemStack itemToGive = stack.clone();
+        int originalAmount = itemToGive.getAmount();
 
-                Map<Integer, ItemStack> leftovers = inventory.addItem(itemToGive);
+        Map<Integer, ItemStack> leftovers = inventory.addItem(itemToGive);
 
-                if (leftovers.isEmpty()) {
-                    anyAdded = true;
-                } else {
-                    int leftoverAmount = 0;
-                    for (ItemStack leftover : leftovers.values()) {
-                        if (leftover != null && leftover.getAmount() > 0) {
-                            leftoverAmount += leftover.getAmount();
-                            if (world != null && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
-                                world.dropItemNaturally(dropLocation, leftover);
-                            } else {
-                                Objects.requireNonNull(fallbackLoc.getWorld()).dropItemNaturally(fallbackLoc, leftover);
-                            }
-                            anyDropped = true;
-                        }
-                    }
-                    if (leftoverAmount < originalAmount) anyAdded = true;
-                }
-            } catch (Exception e) {
-                if (world != null && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
-                    world.dropItemNaturally(dropLocation, stack);
-                } else {
-                    Objects.requireNonNull(fallbackLoc.getWorld()).dropItemNaturally(fallbackLoc, stack);
-                }
-                anyDropped = true;
+        if (leftovers.isEmpty()) {
+          anyAdded = true;
+        } else {
+          int leftoverAmount = 0;
+          for (ItemStack leftover : leftovers.values()) {
+            if (leftover != null && leftover.getAmount() > 0) {
+              leftoverAmount += leftover.getAmount();
+              if (world != null
+                  && world.isChunkLoaded(
+                      dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
+                world.dropItemNaturally(dropLocation, leftover);
+              } else {
+                Objects.requireNonNull(fallbackLoc.getWorld())
+                    .dropItemNaturally(fallbackLoc, leftover);
+              }
+              anyDropped = true;
             }
+          }
+          if (leftoverAmount < originalAmount) anyAdded = true;
         }
-
-        if (anyDropped) {
-            player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground."));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.PLAYERS, 1.0f, 0.5f);
+      } catch (Exception e) {
+        if (world != null
+            && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
+          world.dropItemNaturally(dropLocation, stack);
+        } else {
+          Objects.requireNonNull(fallbackLoc.getWorld()).dropItemNaturally(fallbackLoc, stack);
         }
-
-        if (anyAdded) {
-            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, SoundCategory.PLAYERS, 0.25f, 1.2f);
-        }
+        anyDropped = true;
+      }
     }
 
-    public static Location centeredDropLocation(Location target) {
-        if (target == null) return null;
-
-        World world = target.getWorld();
-        if (world == null) return null;
-
-        return new Location(
-                world,
-                target.getBlockX() + 0.5,
-                target.getBlockY() + 0.5,
-                target.getBlockZ() + 0.5,
-                0f, 0f
-        );
+    if (anyDropped) {
+      player.sendMessage(
+          ColorUtils.color(
+              "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground."));
+      player.playSound(
+          player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.PLAYERS, 1.0f, 0.5f);
     }
+
+    if (anyAdded) {
+      player.playSound(
+          player.getLocation(), Sound.ENTITY_ITEM_PICKUP, SoundCategory.PLAYERS, 0.25f, 1.2f);
+    }
+  }
+
+  public static Location centeredDropLocation(Location target) {
+    if (target == null) return null;
+
+    World world = target.getWorld();
+    if (world == null) return null;
+
+    return new Location(
+        world,
+        target.getBlockX() + 0.5,
+        target.getBlockY() + 0.5,
+        target.getBlockZ() + 0.5,
+        0f,
+        0f);
+  }
 }
