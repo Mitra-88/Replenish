@@ -1,7 +1,4 @@
-> [!IMPORTANT]
-> Production-ready for standard gameplay. A few edge cases are still being smoothed out — nothing that should affect normal farming use.
-
-# Replenish 🌾 – auto-replant QoL
+# Replenish 🌾
 
 Tiny, blazing-fast auto-replant plugin for Bukkit/Spigot/Paper 26.2+.
 Inspired by the **Replenish** enchant from Hypixel SkyBlock.
