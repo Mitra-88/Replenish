@@ -1,3 +1,5 @@
+config-version: 2         # DON'T TOUCH THIS!!!
+
 enabled: true
 requirePlayerSeed: true   # consume 1 seed from inventory on mature harvest
 directPickup: true        # drops go straight to the player
@@ -9,3 +11,11 @@ crops:
   potatoes: true
   nether_wart: true
   cocoa: true
+  beetroots: true
+  # TORCHFLOWER: The CROP (grown from seeds) will be replanted automatically.
+  # The decorative TORCHFLOWER flower block (placed from inventory) is NOT a crop
+  # and will not be replanted – players will see an in-game message explaining this.
+  torchflower: true
+  # PITCHER PLANT: The CROP (grown from seeds) will be replanted.
+  # The decorative PITCHER PLANT block (placed from inventory) is NOT a crop.
+  pitcher_crop: true
