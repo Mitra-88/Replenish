@@ -1,0 +1,159 @@
+name: "Bug Report"
+description: "Help us fix an issue with Replenish"
+labels:
+  - "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 **Hey there! Thanks for taking the time to report a bug.**
+        
+        Before we dive in, please double-check [the issue tracker](https://github.com/Mitra-88/Replenish/issues) to make sure someone else hasn't already reported the same thing. If they have, feel free to add your thoughts to that thread instead!
+        
+        The more details you give me below, the faster I can squash this bug. Let's get started!
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ### 🌾 What happened?
+
+  - type: textarea
+    id: "what-happened"
+    attributes:
+      label: "Describe the bug"
+      description: |
+        In your own words, tell me what went wrong. What did you expect to happen? 
+        Please give us clear step-by-step instructions on how to trigger the bug.
+      placeholder: |
+        1. I planted a crop...
+        2. I waited for it to fully grow...
+        3. I broke it with my tool...
+        4. The crop didn't replant, and I expected it to!
+    validations:
+      required: true
+
+  - type: dropdown
+    id: "crop-type"
+    attributes:
+      label: "Which crop is causing trouble?"
+      description: "Pick the crop that isn't working right. If it's a general issue, pick \"Multiple / All Crops\"."
+      options:
+        - "Wheat"
+        - "Carrots"
+        - "Potatoes"
+        - "Nether Wart"
+        - "Cocoa Beans"
+        - "Beetroots"
+        - "Torchflower"
+        - "Pitcher Crop"
+        - "Multiple / All Crops"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: "tool-used"
+    attributes:
+      label: "What tool were you holding?"
+      description: |
+        Replenish requires specific tools to trigger replanting (Hoes for crops, Axes for Cocoa).
+      options:
+        - "Hoe (Wood, Stone, Copper, Iron, Gold, Diamond, Netherite)"
+        - "Axe (Wood, Stone, Copper, Iron, Gold, Diamond, Netherite)"
+        - "Just my bare hands"
+        - "Another tool entirely"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ### 💻 About your server
+        
+        I need a few technical details to figure out if this is a version-specific issue.
+
+  - type: dropdown
+    id: "server-software"
+    attributes:
+      label: "Server Software"
+      description: "What server software are you running?"
+      options:
+        - "Spigot"
+        - "PaperMC"
+        - "Purpur"
+        - "Pufferfish"
+        - "Other (Please mention in Additional Context)"
+    validations:
+      required: true
+
+  - type: input
+    id: "server-version"
+    attributes:
+      label: "Minecraft Version"
+      description: "Run the `/version` or `/about` command in your server console and paste the exact output here."
+      placeholder: "ex. This server is running Paper version 26.2-34-2960379 (MC: 26.2)"
+    validations:
+      required: true
+
+  - type: input
+    id: "plugin-version"
+    attributes:
+      label: "Replenish Version"
+      description: "What version of Replenish are you using? You can find this by typing `/replenish version` in-game or in your console."
+      placeholder: "ex. v5.4.0"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ### ⚙️ Your Settings & Logs
+
+  - type: dropdown
+    id: "config-settings"
+    attributes:
+      label: "Plugin Settings"
+      description: |
+        How do you have Replenish configured? 
+        Do players need seeds in their inventory, and do items go straight to their inventory?
+      options:
+        - "Defaults (Seeds required + Direct pickup to inventory)"
+        - "Seeds required, but items drop on the ground"
+        - "Seeds NOT required, items go to inventory"
+        - "Seeds NOT required, items drop on the ground"
+        - "I haven't changed the config (Defaults)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: "logs"
+    attributes:
+      label: "Console Errors / Logs"
+      description: |
+        If the server spat out an error in the console when the bug happened, I need to see it! 
+        **Please don't paste massive walls of text directly here.** Copy your log, paste it into a site like [mclo.gs](https://mclo.gs/) or [Pastebin](https://pastebin.com/), and share the link with me. 
+        If there was absolutely no error in the console, just type "No errors in console".
+      placeholder: "Paste your mclo.gs link here..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: "plugins"
+    attributes:
+      label: "Other Plugins"
+      description: |
+        Does your server have any other plugins that might mess with farming, block breaking, or inventory? (Like mcMMO, anti-cheats, Essentials, etc.)
+        Listing them helps me rule out conflicts!
+      placeholder: "ex. EssentialsX, mcMMO, NoCheatPlus, Aurelium Skills..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: "additional-context"
+    attributes:
+      label: "Anything else?"
+      description: "Got a screenshot? A video link? Or maybe just some extra context about what was happening when the bug occurred? Drop it all here!"
+    validations:
+      required: false
