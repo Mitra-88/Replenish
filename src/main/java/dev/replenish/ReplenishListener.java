@@ -3,6 +3,8 @@ package dev.replenish;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -171,7 +173,13 @@ public class ReplenishListener implements Listener {
                 || cropType == Material.NETHER_WART) {
             hasRequiredTool = HOE_TOOLS.contains(toolInHandType);
         }
-        if (!hasRequiredTool) return;
+
+        if (!hasRequiredTool) {
+            String toolName = cropType == Material.COCOA ? "an axe" : "a hoe";
+            player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &7Use &e" + toolName + " &7to auto-replant!"));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            return;
+        }
 
         if (cropType == Material.COCOA) {
             if (findAdjacentJungle(block) == null) return;
@@ -200,9 +208,14 @@ public class ReplenishListener implements Listener {
         int replantedAge = wasMature ? 0 : originalAge;
 
         Material seedMaterial = seedFor(cropType);
+
         if (wasMature && config.requirePlayerSeed) {
             if (seedMaterial == null) return;
-            if (!SeedIndex.consume(player, seedMaterial)) return;
+            if (!SeedIndex.consume(player, seedMaterial)) {
+                player.sendMessage(ColorUtils.color("&8[&eReplenish&8] &8» &cYou need &eseeds &cto auto-replant!"));
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+                return;
+            }
         }
 
         event.setDropItems(false);
