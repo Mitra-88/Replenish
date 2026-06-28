@@ -15,7 +15,7 @@ public final class DropPickupManager {
     private DropPickupManager() {}
 
     public static void giveToPlayerOrDrop(Player player, Location dropLocation, Collection<ItemStack> drops) {
-        if (player == null || dropLocation == null || drops == null || drops.isEmpty()) return;
+        if (player == null || !player.isOnline() || dropLocation == null || drops == null || drops.isEmpty()) return;
 
         PlayerInventory inventory = player.getInventory();
         World world = dropLocation.getWorld();
@@ -24,24 +24,31 @@ public final class DropPickupManager {
         for (ItemStack stack : drops) {
             if (stack == null || stack.getAmount() <= 0 || stack.getType().isAir()) continue;
 
-            int originalAmount = stack.getAmount();
+            try {
+                ItemStack itemToGive = stack.clone();
+                int originalAmount = itemToGive.getAmount();
 
-            Map<Integer, ItemStack> leftovers = inventory.addItem(stack);
+                Map<Integer, ItemStack> leftovers = inventory.addItem(itemToGive);
 
-            if (leftovers.isEmpty()) {
-                anyAdded = true;
-            } else {
-                int leftoverAmount = 0;
-                for (ItemStack leftover : leftovers.values()) {
-                    if (leftover != null && leftover.getAmount() > 0) {
-                        leftoverAmount += leftover.getAmount();
-                        if (world != null) {
-                            world.dropItemNaturally(dropLocation, leftover);
+                if (leftovers.isEmpty()) {
+                    anyAdded = true;
+                } else {
+                    int leftoverAmount = 0;
+                    for (ItemStack leftover : leftovers.values()) {
+                        if (leftover != null && leftover.getAmount() > 0) {
+                            leftoverAmount += leftover.getAmount();
+                            if (world != null && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
+                                world.dropItemNaturally(dropLocation, leftover);
+                            }
                         }
                     }
+                    if (leftoverAmount < originalAmount) {
+                        anyAdded = true;
+                    }
                 }
-                if (leftoverAmount < originalAmount) {
-                    anyAdded = true;
+            } catch (Exception e) {
+                if (world != null && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
+                    world.dropItemNaturally(dropLocation, stack);
                 }
             }
         }
@@ -54,8 +61,11 @@ public final class DropPickupManager {
     public static Location centeredDropLocation(Location target) {
         if (target == null) return null;
 
+        World world = target.getWorld();
+        if (world == null) return null;
+
         return new Location(
-                target.getWorld(),
+                world,
                 target.getBlockX() + 0.5,
                 target.getBlockY() + 0.5,
                 target.getBlockZ() + 0.5,
