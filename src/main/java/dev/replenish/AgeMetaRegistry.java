@@ -22,7 +22,14 @@ public final class AgeMetaRegistry {
   public AgeMetaRegistry(Plugin plugin) {
     this.metadataArray = new AgeMeta[Material.values().length];
     Material[] supportedCrops = {
-      Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA
+      Material.WHEAT,
+      Material.CARROTS,
+      Material.POTATOES,
+      Material.NETHER_WART,
+      Material.COCOA,
+      Material.BEETROOTS,
+      Material.TORCHFLOWER_CROP,
+      Material.PITCHER_CROP
     };
 
     for (Material material : supportedCrops) {
