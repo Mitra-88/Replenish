@@ -13,11 +13,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
@@ -45,10 +47,12 @@ public class ReplenishListener implements Listener {
     };
 
     private static final EnumSet<Material> HOE_TOOLS = EnumSet.of(
-            Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE
+            Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE,
+            Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE
     );
     private static final EnumSet<Material> AXE_TOOLS = EnumSet.of(
-            Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
+            Material.WOODEN_AXE, Material.STONE_AXE, Material.IRON_AXE,
+            Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE
     );
     private static final EnumSet<Material> JUNGLE_ANCHOR_BLOCKS = EnumSet.of(
             Material.JUNGLE_LOG, Material.STRIPPED_JUNGLE_LOG,
@@ -119,7 +123,11 @@ public class ReplenishListener implements Listener {
     public void onPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof Player player) {
             if (isRelevantSeed(event.getItem().getItemStack())) {
-                invalidateWithCooldown(player);
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (player.isOnline()) {
+                        invalidateWithCooldown(player);
+                    }
+                });
             }
         }
     }
@@ -131,10 +139,18 @@ public class ReplenishListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isRelevantSeed(event.getItem())) {
+            invalidateWithCooldown(event.getPlayer());
+        }
+    }
+
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE) return;
+        if (player.getGameMode() == GameMode.CREATIVE
+                || player.getGameMode() == GameMode.SPECTATOR) return;
 
         ReplenishPlugin.ConfigCache config = plugin.getConfigCache();
         if (!config.enabled) return;
@@ -149,7 +165,10 @@ public class ReplenishListener implements Listener {
         boolean hasRequiredTool = false;
         if (cropType == Material.COCOA) {
             hasRequiredTool = AXE_TOOLS.contains(toolInHandType);
-        } else if (cropType == Material.WHEAT || cropType == Material.CARROTS || cropType == Material.POTATOES || cropType == Material.NETHER_WART) {
+        } else if (cropType == Material.WHEAT
+                || cropType == Material.CARROTS
+                || cropType == Material.POTATOES
+                || cropType == Material.NETHER_WART) {
             hasRequiredTool = HOE_TOOLS.contains(toolInHandType);
         }
         if (!hasRequiredTool) return;
@@ -166,13 +185,18 @@ public class ReplenishListener implements Listener {
         }
 
         BlockData originalBlockData = block.getBlockData();
-        int originalAge = 0;
-        boolean wasMature = false;
-        if (originalBlockData instanceof Ageable ageable) {
-            int maxAge = maxAges.getOrDefault(cropType, 0);
-            originalAge = ageable.getAge();
-            wasMature = maxAge > 0 && originalAge >= maxAge;
+
+        if (!(originalBlockData instanceof Ageable ageable)) {
+            return;
         }
+
+        int maxAge = maxAges.getOrDefault(cropType, 0);
+        if (maxAge <= 0) {
+            return;
+        }
+
+        int originalAge = ageable.getAge();
+        boolean wasMature = originalAge >= maxAge;
         int replantedAge = wasMature ? 0 : originalAge;
 
         Material seedMaterial = seedFor(cropType);
@@ -182,9 +206,13 @@ public class ReplenishListener implements Listener {
         }
 
         event.setDropItems(false);
-        Collection<ItemStack> drops = wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
+        Collection<ItemStack> drops = wasMature
+                ? block.getDrops(toolInHand, player)
+                : Collections.emptyList();
 
-        BlockFace originalCocoaFacing = (cropType == Material.COCOA && originalBlockData instanceof Directional directional) ? directional.getFacing() : null;
+        BlockFace originalCocoaFacing = (cropType == Material.COCOA
+                && originalBlockData instanceof Directional directional)
+                ? directional.getFacing() : null;
 
         if (!drops.isEmpty()) {
             Location dropLocation = DropPickupManager.centeredDropLocation(block.getLocation());
