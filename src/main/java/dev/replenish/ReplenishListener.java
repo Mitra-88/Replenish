@@ -43,7 +43,10 @@ public class ReplenishListener implements Listener {
           Material.CARROTS,
           Material.POTATOES,
           Material.NETHER_WART,
-          Material.COCOA);
+          Material.COCOA,
+          Material.BEETROOTS,
+          Material.TORCHFLOWER_CROP,
+          Material.PITCHER_CROP);
 
   private static final Set<Material> SEED_TYPES =
       EnumSet.of(
@@ -51,7 +54,13 @@ public class ReplenishListener implements Listener {
           Material.CARROT,
           Material.POTATO,
           Material.NETHER_WART,
-          Material.COCOA_BEANS);
+          Material.COCOA_BEANS,
+          Material.BEETROOT_SEEDS,
+          Material.TORCHFLOWER_SEEDS,
+          Material.PITCHER_POD);
+
+  private static final Set<Material> DECORATIVE_FLOWERS =
+      EnumSet.of(Material.TORCHFLOWER, Material.PITCHER_PLANT);
 
   private static final BlockFace[] HORIZONTAL_FACES = {
     BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
@@ -61,6 +70,7 @@ public class ReplenishListener implements Listener {
       EnumSet.of(
           Material.WOODEN_HOE,
           Material.STONE_HOE,
+          Material.COPPER_HOE,
           Material.IRON_HOE,
           Material.GOLDEN_HOE,
           Material.DIAMOND_HOE,
@@ -69,6 +79,7 @@ public class ReplenishListener implements Listener {
       EnumSet.of(
           Material.WOODEN_AXE,
           Material.STONE_AXE,
+          Material.COPPER_HOE,
           Material.IRON_AXE,
           Material.GOLDEN_AXE,
           Material.DIAMOND_AXE,
@@ -187,7 +198,6 @@ public class ReplenishListener implements Listener {
     Player player = event.getPlayer();
     if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR)
       return;
-
     if (player.isSneaking()) return;
 
     ReplenishPlugin.ConfigCache config = plugin.getConfigCache();
@@ -195,6 +205,22 @@ public class ReplenishListener implements Listener {
 
     Block block = event.getBlock();
     Material cropType = block.getType();
+
+    if (DECORATIVE_FLOWERS.contains(cropType)) {
+      Block below = block.getRelative(BlockFace.DOWN);
+      if (below.getType() == Material.FARMLAND) {
+        if (canSendMessage(player)) {
+          player.sendMessage(
+              ColorUtils.color(
+                  "&8[&eReplenish&8] &8» &7This is a &edecorative block&7, not a crop. Only the"
+                      + " &eplanted crop &7can be replanted (age 0-1)."));
+          player.playSound(
+              player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        }
+      }
+      return;
+    }
+
     if (!SUPPORTED_CROPS.contains(cropType) || !plugin.isCropEnabled(cropType)) return;
 
     ItemStack toolInHand = player.getInventory().getItemInMainHand();
@@ -206,7 +232,10 @@ public class ReplenishListener implements Listener {
     } else if (cropType == Material.WHEAT
         || cropType == Material.CARROTS
         || cropType == Material.POTATOES
-        || cropType == Material.NETHER_WART) {
+        || cropType == Material.NETHER_WART
+        || cropType == Material.BEETROOTS
+        || cropType == Material.TORCHFLOWER_CROP
+        || cropType == Material.PITCHER_CROP) {
       hasRequiredTool = HOE_TOOLS.contains(toolInHandType);
     }
 
@@ -236,15 +265,10 @@ public class ReplenishListener implements Listener {
     }
 
     BlockData originalBlockData = block.getBlockData();
-
-    if (!(originalBlockData instanceof Ageable ageable)) {
-      return;
-    }
+    if (!(originalBlockData instanceof Ageable ageable)) return;
 
     int maxAge = maxAges.getOrDefault(cropType, 0);
-    if (maxAge <= 0) {
-      return;
-    }
+    if (maxAge <= 0) return;
 
     int originalAge = ageable.getAge();
     boolean wasMature = originalAge >= maxAge;
@@ -271,10 +295,10 @@ public class ReplenishListener implements Listener {
     Collection<ItemStack> drops =
         wasMature ? block.getDrops(toolInHand, player) : Collections.emptyList();
 
-    BlockFace originalCocoaFacing =
-        (cropType == Material.COCOA && originalBlockData instanceof Directional directional)
-            ? directional.getFacing()
-            : null;
+    BlockFace originalCocoaFacing = null;
+    if (cropType == Material.COCOA && originalBlockData instanceof Directional directional) {
+      originalCocoaFacing = directional.getFacing();
+    }
 
     if (!drops.isEmpty()) {
       Location dropLocation = DropPickupManager.centeredDropLocation(block.getLocation());
@@ -337,6 +361,9 @@ public class ReplenishListener implements Listener {
     if (crop == Material.POTATOES) return Material.POTATO;
     if (crop == Material.NETHER_WART) return Material.NETHER_WART;
     if (crop == Material.COCOA) return Material.COCOA_BEANS;
+    if (crop == Material.BEETROOTS) return Material.BEETROOT_SEEDS;
+    if (crop == Material.TORCHFLOWER_CROP) return Material.TORCHFLOWER_SEEDS;
+    if (crop == Material.PITCHER_CROP) return Material.PITCHER_POD;
     return null;
   }
 }
