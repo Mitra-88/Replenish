@@ -1,8 +1,6 @@
 package dev.replenish;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -103,17 +101,10 @@ public final class ReplantQueue {
     if (delay >= TIME_WHEEL_SIZE) {
       plugin
           .getLogger()
-          .warning(
-              "Replant delay of "
-                  + delayTicks
-                  + " ticks exceeds wheel size ("
-                  + (TIME_WHEEL_SIZE - 1)
-                  + "), truncating. Block at "
-                  + locString(block));
+          .warning("Replant delay truncation triggered for block at " + locString(block));
       delay = TIME_WHEEL_SIZE - 1;
     }
     int slot = (cursor + delay) & TIME_WHEEL_MASK;
-
     int index = acquire();
 
     poolBlocks[index] = block;
@@ -135,47 +126,45 @@ public final class ReplantQueue {
       cursor = (cursor + 1) & TIME_WHEEL_MASK;
       return;
     }
+    wheelHeads[cursor] = -1;
 
     int processed = 0;
-
-    Map<World, Map<Long, Boolean>> chunkLoadedCache = new HashMap<>();
-
-    int unprocessedHead = -1;
-    int unprocessedTail = -1;
+    int deferredHead = -1;
+    int deferredTail = -1;
 
     while (head != -1) {
-      if (processed >= maxPerTick) break;
-
-      Block b = poolBlocks[head];
       int next = poolNext[head];
+      poolNext[head] = -1;
 
-      if (b == null) {
-        release(head);
+      if (processed >= maxPerTick) {
+        if (deferredHead == -1) deferredHead = head;
+        else poolNext[deferredTail] = head;
+        deferredTail = head;
         head = next;
         continue;
       }
 
-      World world = b.getWorld();
-
-      int chunkX = b.getX() >> 4;
-      int chunkZ = b.getZ() >> 4;
-      long chunkKey = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
-
-      Map<Long, Boolean> worldCache = chunkLoadedCache.computeIfAbsent(world, k -> new HashMap<>());
-
-      Boolean loaded = worldCache.get(chunkKey);
-      if (loaded == null) {
-        try {
-          loaded = world.isChunkLoaded(chunkX, chunkZ);
-        } catch (Exception e) {
-          loaded = false;
-        }
-        worldCache.put(chunkKey, loaded);
+      Block b = poolBlocks[head];
+      if (b == null) {
+        release(head);
+        head = next;
+        continue;
+      } else {
+          b.getWorld();
       }
 
-      boolean shouldProcess = loaded;
+        World world = b.getWorld();
+      int chunkX = b.getX() >> 4;
+      int chunkZ = b.getZ() >> 4;
 
-      if (shouldProcess) {
+      boolean loaded;
+      try {
+        loaded = world.isChunkLoaded(chunkX, chunkZ);
+      } catch (Exception e) {
+        loaded = false;
+      }
+
+      if (loaded) {
         try {
           replant(head);
         } catch (Exception e) {
@@ -188,49 +177,27 @@ public final class ReplantQueue {
         if (retries >= MAX_UNLOAD_RETRIES) {
           plugin
               .getLogger()
-              .warning(
-                  "Abandoning replant at "
-                      + locString(b)
-                      + " - chunk remained unloaded for "
-                      + MAX_UNLOAD_RETRIES
-                      + " ticks.");
+              .warning("Abandoning replant at " + locString(b) + " - chunk remained unloaded.");
           release(head);
           processed++;
         } else {
           poolMeta[head] =
               (poolMeta[head] & ~(RETRY_MASK << RETRY_SHIFT)) | ((retries + 1) << RETRY_SHIFT);
-
-          if (unprocessedHead == -1) {
-            unprocessedHead = head;
-          } else {
-            poolNext[unprocessedTail] = head;
-          }
-          poolNext[head] = -1;
-          unprocessedTail = head;
+          if (deferredHead == -1) deferredHead = head;
+          else poolNext[deferredTail] = head;
+          deferredTail = head;
         }
       }
-
       head = next;
     }
 
     int nextSlot = (cursor + 1) & TIME_WHEEL_MASK;
-
-    if (head != -1) {
-      int tail = head;
-      while (poolNext[tail] != -1) {
-        tail = poolNext[tail];
-      }
-      poolNext[tail] = wheelHeads[nextSlot];
-      wheelHeads[nextSlot] = head;
+    if (deferredHead != -1) {
+      poolNext[deferredTail] = wheelHeads[nextSlot];
+      wheelHeads[nextSlot] = deferredHead;
     }
 
-    if (unprocessedHead != -1) {
-      poolNext[unprocessedTail] = wheelHeads[nextSlot];
-      wheelHeads[nextSlot] = unprocessedHead;
-    }
-
-    wheelHeads[cursor] = -1;
-    cursor = (cursor + 1) & TIME_WHEEL_MASK;
+    cursor = nextSlot;
   }
 
   private void replant(int index) {
@@ -247,7 +214,7 @@ public final class ReplantQueue {
     if (ageMetaRegistry == null) return;
 
     AgeMetaRegistry.AgeMeta meta = ageMetaRegistry.get(plant);
-    if (meta == null) {
+    if (meta == null || meta.baseData == null) {
       plugin
           .getLogger()
           .warning(
@@ -259,7 +226,7 @@ public final class ReplantQueue {
     }
     int maxAge = meta.maximumAge;
 
-    BlockData data = plant.createBlockData();
+    BlockData data = meta.baseData.clone();
 
     if (plant == Material.COCOA) {
       if (data instanceof Directional directional) {
@@ -291,8 +258,7 @@ public final class ReplantQueue {
 
   private String locString(Block b) {
     World w = b.getWorld();
-    String wName = w.getName();
-    return wName + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
+    return w.getName() + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
   }
 
   private void primePool() {
@@ -311,10 +277,7 @@ public final class ReplantQueue {
   private void growPool() {
     int oldSize = poolBlocks.length;
     int newSize = oldSize << 1;
-    if (newSize <= oldSize) {
-      throw new IllegalStateException(
-          "Pool size overflow: cannot grow beyond " + oldSize + " entries");
-    }
+    if (newSize <= oldSize) throw new IllegalStateException("Pool size overflow");
 
     poolBlocks = Arrays.copyOf(poolBlocks, newSize);
     poolMaterials = Arrays.copyOf(poolMaterials, newSize);
