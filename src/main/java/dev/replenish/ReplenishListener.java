@@ -208,8 +208,8 @@ public class ReplenishListener implements Listener {
         if (canSendMessage(player)) {
           player.sendMessage(
               ColorUtils.color(
-                  "&8[&eReplenish&8] &8» &7This is a &edecorative block&7, not a crop. Only the"
-                      + " &eplanted crop &7can be replanted (age 0-1)."));
+                  "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7."
+                      + " Only crops &egrown from seeds &7on farmland are replanted."));
           player.playSound(
               player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
         }
