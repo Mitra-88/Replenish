@@ -1,6 +1,8 @@
 package dev.replenish;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -135,10 +137,8 @@ public final class ReplantQueue {
     }
 
     int processed = 0;
-    World lastWorld = null;
-    int lastChunkX = Integer.MIN_VALUE;
-    int lastChunkZ = Integer.MIN_VALUE;
-    boolean lastChunkLoaded = false;
+
+    Map<World, Map<Long, Boolean>> chunkLoadedCache = new HashMap<>();
 
     int unprocessedHead = -1;
     int unprocessedTail = -1;
@@ -157,25 +157,23 @@ public final class ReplantQueue {
 
       World world = b.getWorld();
 
-      boolean shouldProcess = false;
       int chunkX = b.getX() >> 4;
       int chunkZ = b.getZ() >> 4;
+      long chunkKey = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
 
-      if (world != lastWorld || chunkX != lastChunkX || chunkZ != lastChunkZ) {
-        lastWorld = world;
-        lastChunkX = chunkX;
-        lastChunkZ = chunkZ;
+      Map<Long, Boolean> worldCache = chunkLoadedCache.computeIfAbsent(world, k -> new HashMap<>());
 
+      Boolean loaded = worldCache.get(chunkKey);
+      if (loaded == null) {
         try {
-          lastChunkLoaded = world.isChunkLoaded(chunkX, chunkZ);
+          loaded = world.isChunkLoaded(chunkX, chunkZ);
         } catch (Exception e) {
-          lastChunkLoaded = false;
+          loaded = false;
         }
+        worldCache.put(chunkKey, loaded);
       }
 
-      if (lastChunkLoaded) {
-        shouldProcess = true;
-      }
+      boolean shouldProcess = loaded;
 
       if (shouldProcess) {
         try {
