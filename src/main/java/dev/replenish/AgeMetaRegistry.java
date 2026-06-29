@@ -13,9 +13,11 @@ public final class AgeMetaRegistry {
 
   public static final class AgeMeta {
     public final int maximumAge;
+    public final BlockData baseData;
 
-    private AgeMeta(int maximumAge) {
+    private AgeMeta(int maximumAge, BlockData baseData) {
       this.maximumAge = maximumAge;
+      this.baseData = baseData;
     }
   }
 
@@ -24,21 +26,15 @@ public final class AgeMetaRegistry {
   public AgeMetaRegistry(Plugin plugin) {
     this.metadataMap = new EnumMap<>(Material.class);
     Material[] supportedCrops = {
-      Material.WHEAT,
-      Material.CARROTS,
-      Material.POTATOES,
-      Material.NETHER_WART,
-      Material.COCOA,
-      Material.BEETROOTS,
-      Material.TORCHFLOWER_CROP,
-      Material.PITCHER_CROP
+      Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.NETHER_WART,
+      Material.COCOA, Material.BEETROOTS, Material.TORCHFLOWER_CROP, Material.PITCHER_CROP
     };
 
     for (Material material : supportedCrops) {
       try {
         BlockData data = Bukkit.createBlockData(material);
         if (data instanceof Ageable ageable) {
-          metadataMap.put(material, new AgeMeta(ageable.getMaximumAge()));
+          metadataMap.put(material, new AgeMeta(ageable.getMaximumAge(), data));
         }
       } catch (Throwable error) {
         plugin.getLogger().log(Level.WARNING, "Age meta scan skipped for " + material, error);
