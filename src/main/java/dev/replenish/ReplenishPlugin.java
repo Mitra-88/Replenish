@@ -86,6 +86,14 @@ public class ReplenishPlugin extends JavaPlugin {
     configCacheRef.set(newCache);
 
     if (replantQueue != null) {
+      int pending = replantQueue.getPendingCount();
+      if (pending > 0) {
+        getLogger()
+            .warning(
+                "Discarded "
+                    + pending
+                    + " pending replants during config reload (queue processes in 1 tick)");
+      }
       replantQueue.stop();
     }
     replantQueue = new ReplantQueue(this, maxPerTick, ageMetaRegistry);

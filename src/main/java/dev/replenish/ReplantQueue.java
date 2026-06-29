@@ -72,6 +72,18 @@ public final class ReplantQueue {
     cursor = 0;
   }
 
+  public synchronized int getPendingCount() {
+    int count = 0;
+    for (int i = 0; i < TIME_WHEEL_SIZE; i++) {
+      int head = wheelHeads[i];
+      while (head != -1) {
+        count++;
+        head = poolNext[head];
+      }
+    }
+    return count;
+  }
+
   public synchronized void enqueue(
       Block block,
       Material plantMaterial,
