@@ -149,8 +149,6 @@ public final class ReplantQueue {
         release(head);
         head = next;
         continue;
-      } else {
-        b.getWorld();
       }
 
       World world = b.getWorld();
@@ -257,8 +255,10 @@ public final class ReplantQueue {
   }
 
   private String locString(Block b) {
+    if (b == null) return "null_block";
     World w = b.getWorld();
-    return w.getName() + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
+    String worldName = w.getName();
+    return worldName + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
   }
 
   private void primePool() {
