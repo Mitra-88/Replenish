@@ -12,6 +12,5 @@ public final class CropConstants {
           Material.JUNGLE_WOOD,
           Material.STRIPPED_JUNGLE_WOOD);
 
-  private CropConstants() {
-  }
+  private CropConstants() {}
 }

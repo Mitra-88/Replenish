@@ -23,6 +23,13 @@ public final class ReplantQueue {
     BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
   };
 
+  private static final int AGE_MASK = 0xFF;
+  private static final int FACE_SHIFT = 8;
+  private static final int FACE_MASK = 0x3;
+  private static final int RETRY_SHIFT = 10;
+  private static final int RETRY_MASK = 0xFF;
+  private static final int MAX_UNLOAD_RETRIES = 20;
+
   private Block[] poolBlocks;
   private Material[] poolMaterials;
   private int[] poolMeta;
@@ -110,8 +117,9 @@ public final class ReplantQueue {
     poolBlocks[index] = block;
     poolMaterials[index] = plantMaterial;
 
-    int safeAge = Math.max(0, targetAge) & 0xFF;
-    poolMeta[index] = safeAge | ((faceToOrdinal(cocoaFacingDirection) & 0x3) << 8);
+    int safeAge = Math.max(0, targetAge) & AGE_MASK;
+    int faceOrd = faceToOrdinal(cocoaFacingDirection) & FACE_MASK;
+    poolMeta[index] = safeAge | (faceOrd << FACE_SHIFT);
 
     poolNext[index] = wheelHeads[slot];
     wheelHeads[slot] = index;
@@ -178,13 +186,30 @@ public final class ReplantQueue {
         release(head);
         processed++;
       } else {
-        if (unprocessedHead == -1) {
-          unprocessedHead = head;
+        int retries = (poolMeta[head] >>> RETRY_SHIFT) & RETRY_MASK;
+        if (retries >= MAX_UNLOAD_RETRIES) {
+          plugin
+              .getLogger()
+              .warning(
+                  "Abandoning replant at "
+                      + locString(b)
+                      + " - chunk remained unloaded for "
+                      + MAX_UNLOAD_RETRIES
+                      + " ticks.");
+          release(head);
+          processed++;
         } else {
-          poolNext[unprocessedTail] = head;
+          poolMeta[head] =
+              (poolMeta[head] & ~(RETRY_MASK << RETRY_SHIFT)) | ((retries + 1) << RETRY_SHIFT);
+
+          if (unprocessedHead == -1) {
+            unprocessedHead = head;
+          } else {
+            poolNext[unprocessedTail] = head;
+          }
+          poolNext[head] = -1;
+          unprocessedTail = head;
         }
-        poolNext[head] = -1;
-        unprocessedTail = head;
       }
 
       head = next;
@@ -218,8 +243,8 @@ public final class ReplantQueue {
     if (plant == null) return;
 
     int metadata = poolMeta[index];
-    int targetAge = metadata & 0xFF;
-    BlockFace face = ordinalToFace((metadata >> 8) & 0x3);
+    int targetAge = metadata & AGE_MASK;
+    BlockFace face = ordinalToFace((metadata >>> FACE_SHIFT) & FACE_MASK);
 
     if (ageMetaRegistry == null) return;
 
