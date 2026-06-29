@@ -150,10 +150,10 @@ public final class ReplantQueue {
         head = next;
         continue;
       } else {
-          b.getWorld();
+        b.getWorld();
       }
 
-        World world = b.getWorld();
+      World world = b.getWorld();
       int chunkX = b.getX() >> 4;
       int chunkZ = b.getZ() >> 4;
 
