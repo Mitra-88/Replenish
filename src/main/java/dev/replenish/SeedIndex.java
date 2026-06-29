@@ -12,7 +12,6 @@ public final class SeedIndex {
 
   private static final int NO_SLOT = -1;
   private static final int STORAGE_SIZE = 36;
-  // REMINDER: DON'T USE WeakHashMap BRO!
   private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new HashMap<>();
 
   private SeedIndex() {}
@@ -30,21 +29,22 @@ public final class SeedIndex {
 
     PlayerInventory inventory = player.getInventory();
     UUID uuid = player.getUniqueId();
-    Map<Material, Integer> playerCache = cacheByPlayer.get(uuid);
 
-    if (playerCache != null) {
-      Integer cachedSlot = playerCache.get(seedMaterial);
-      if (cachedSlot != null) {
-        if (cachedSlot == NO_SLOT) return false;
-        if (tryConsume(inventory, playerCache, seedMaterial, cachedSlot)) return true;
-      }
+    Map<Material, Integer> playerCache =
+        cacheByPlayer.computeIfAbsent(uuid, k -> buildIndex(inventory));
+
+    Integer cachedSlot = playerCache.get(seedMaterial);
+    if (cachedSlot != null && cachedSlot != NO_SLOT) {
+      if (tryConsume(inventory, playerCache, seedMaterial, cachedSlot)) return true;
     }
 
-    playerCache = buildIndex(inventory);
-    cacheByPlayer.put(uuid, playerCache);
+    playerCache.clear();
+    playerCache.putAll(buildIndex(inventory));
 
-    Integer slotIndex = playerCache.get(seedMaterial);
-    if (slotIndex != null) return tryConsume(inventory, playerCache, seedMaterial, slotIndex);
+    Integer newSlot = playerCache.get(seedMaterial);
+    if (newSlot != null && newSlot != NO_SLOT) {
+      return tryConsume(inventory, playerCache, seedMaterial, newSlot);
+    }
 
     playerCache.put(seedMaterial, NO_SLOT);
     return false;
@@ -55,7 +55,6 @@ public final class SeedIndex {
     ItemStack stack = (slot == 40) ? inventory.getItemInOffHand() : inventory.getItem(slot);
 
     if (stack == null || stack.getType() != material || stack.getAmount() <= 0) {
-      cache.remove(material);
       return false;
     }
 
