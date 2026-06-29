@@ -5,33 +5,20 @@ import java.util.Map;
 import java.util.UUID;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class SeedIndex implements Listener {
+public final class SeedIndex {
 
   private static final int NO_SLOT = -1;
   private static final int STORAGE_SIZE = 36;
   // REMINDER: DON'T USE WeakHashMap BRO!
   private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new HashMap<>();
-  private static SeedIndex listenerInstance;
 
   private SeedIndex() {}
 
   public static synchronized void init(JavaPlugin plugin) {
-    if (listenerInstance == null) {
-      listenerInstance = new SeedIndex();
-      plugin.getServer().getPluginManager().registerEvents(listenerInstance, plugin);
-    }
   }
 
   public static void invalidate(UUID uuid) {
@@ -40,42 +27,6 @@ public final class SeedIndex implements Listener {
 
   public static void invalidate(Player player) {
     if (player != null) invalidate(player.getUniqueId());
-  }
-
-  @EventHandler
-  public void onPlayerQuit(PlayerQuitEvent event) {
-    invalidate(event.getPlayer().getUniqueId());
-  }
-
-  @EventHandler
-  public void onInventoryClick(InventoryClickEvent event) {
-    if (event.getWhoClicked() instanceof Player player) {
-      invalidate(player.getUniqueId());
-    }
-  }
-
-  @EventHandler
-  public void onInventoryDrag(InventoryDragEvent event) {
-    if (event.getWhoClicked() instanceof Player player) {
-      invalidate(player.getUniqueId());
-    }
-  }
-
-  @EventHandler
-  public void onItemPickup(EntityPickupItemEvent event) {
-    if (event.getEntity() instanceof Player player) {
-      invalidate(player.getUniqueId());
-    }
-  }
-
-  @EventHandler
-  public void onItemDrop(PlayerDropItemEvent event) {
-    invalidate(event.getPlayer().getUniqueId());
-  }
-
-  @EventHandler
-  public void onSwapHands(PlayerSwapHandItemsEvent event) {
-    invalidate(event.getPlayer().getUniqueId());
   }
 
   public static boolean consume(Player player, Material seedMaterial) {

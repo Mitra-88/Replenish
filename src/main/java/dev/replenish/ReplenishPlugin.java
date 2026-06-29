@@ -27,8 +27,6 @@ public class ReplenishPlugin extends JavaPlugin {
     saveDefaultConfig();
     ageMetaRegistry = new AgeMetaRegistry(this);
 
-    SeedIndex.init(this);
-
     reloadLocalConfig();
 
     ConfigCache cfg = getConfigCache();
