@@ -7,7 +7,6 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.plugin.java.JavaPlugin;
 
 public final class SeedIndex {
 
@@ -17,8 +16,6 @@ public final class SeedIndex {
   private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new HashMap<>();
 
   private SeedIndex() {}
-
-  public static synchronized void init(JavaPlugin plugin) {}
 
   public static void invalidate(UUID uuid) {
     cacheByPlayer.remove(uuid);
