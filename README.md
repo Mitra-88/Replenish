@@ -72,6 +72,7 @@ requirePlayerSeed: true
 directPickup: true
 replantDelayTicks: 1
 maxReplantsPerTick: 4096
+checkUpdates: true
 crops:
   wheat: true
   carrots: true

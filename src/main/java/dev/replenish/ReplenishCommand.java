@@ -148,6 +148,31 @@ public class ReplenishCommand implements CommandExecutor, TabCompleter {
         send(sender, "  " + DOT + "&7Plugin Version: &f" + plugin.getDescription().getVersion());
         send(sender, "  " + DOT + "&7Server Version: &f" + plugin.getServer().getVersion());
         send(sender, "  " + DOT + "&7Java Version: &f" + System.getProperty("java.version"));
+
+        UpdateChecker uc = plugin.getUpdateChecker();
+        if (uc == null || !uc.isEnabled()) {
+          send(sender, "  " + DOT + "&7Update Check: &cDisabled");
+        } else if (!uc.isCheckCompleted()) {
+          send(sender, "  " + DOT + "&7Update Check: &fChecking...");
+        } else if (uc.isUpdateAvailable()) {
+          send(
+              sender,
+              "  "
+                  + DOT
+                  + "&7Update Status: &eUpdate available &8(&f"
+                  + uc.getCurrentVersion()
+                  + " &7➟ &e"
+                  + uc.getLatestVersion()
+                  + "&8)");
+          send(
+              sender,
+              "  " + DOT + "&7Download: &bhttps://github.com/Mitra-88/Replenish/releases/latest");
+        } else {
+          send(
+              sender,
+              "  " + DOT + "&7Update Status: &aUp to date &8(&f" + uc.getCurrentVersion() + "&8)");
+        }
+
         send(sender, "");
         send(sender, LINE);
         return true;

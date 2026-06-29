@@ -20,6 +20,7 @@ public class ReplenishPlugin extends JavaPlugin {
       new AtomicReference<>(ConfigCache.getDefault());
   private volatile ReplantQueue replantQueue;
   private AgeMetaRegistry ageMetaRegistry;
+  private UpdateChecker updateChecker;
 
   @Override
   public void onEnable() {
@@ -40,6 +41,10 @@ public class ReplenishPlugin extends JavaPlugin {
     getLogger().info("Queue size: " + cfg.maxReplantsPerTick);
     getLogger().info("Delay: " + cfg.replantDelayTicks + " tick");
 
+    boolean checkUpdates = getConfig().getBoolean("checkUpdates", true);
+    updateChecker = new UpdateChecker(this, checkUpdates);
+    updateChecker.check();
+
     getServer()
         .getPluginManager()
         .registerEvents(new ReplenishListener(this, ageMetaRegistry), this);
@@ -55,6 +60,10 @@ public class ReplenishPlugin extends JavaPlugin {
   @Override
   public void onDisable() {
     if (replantQueue != null) replantQueue.stop();
+  }
+
+  public UpdateChecker getUpdateChecker() {
+    return updateChecker;
   }
 
   public void reloadLocalConfig() {
