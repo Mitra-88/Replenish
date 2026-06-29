@@ -1,9 +1,6 @@
 # Replenish 🌾
 
-Tiny, blazing-fast auto-replant plugin for Spigot/Paper 26.2+.
-Inspired by the **Replenish** enchant from Hypixel SkyBlock.
-
-Break a fully-grown crop → it instantly replants itself.
+Tiny, blazing-fast auto-replant plugin for Spigot/Paper, inspired by Hypixel's Replenish enchantment.
 
 ![Preview](assets/output.webp)
 
@@ -11,13 +8,13 @@ Break a fully-grown crop → it instantly replants itself.
 
 ## What it does
 
-- 🌾 Auto-replants Wheat, Carrots, Potatoes, Nether Wart and Cocoa
+- 🌾 Auto-replants Wheat, Carrots, Potatoes, Nether Wart, Cocoa, Beetroots, Torchflowers, and Pitcher Crops
 - 🌱 Immature crops keep their current growth stage
-- 🎒 Optional seed consumption
-- 📦 Optional direct pickup into your inventory
+- 🎒 Optional seed consumption (on by default)
+- 📦 Optional direct pickup into your inventory (on by default)
 - 🪓 Requires the correct tool (Hoes / Axes)
 - 🧭 Correctly replants Cocoa with the proper facing
-- 🍀 Fortune enchantments work normally
+- 🍀 Fortune enchantments works normally
 - ⚡ Extremely lightweight and designed for large farms
 
 ---
