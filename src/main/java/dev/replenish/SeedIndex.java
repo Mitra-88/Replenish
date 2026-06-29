@@ -3,6 +3,7 @@ package dev.replenish;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -12,7 +13,7 @@ public final class SeedIndex {
 
   private static final int NO_SLOT = -1;
   private static final int STORAGE_SIZE = 36;
-  private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new HashMap<>();
+  private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new ConcurrentHashMap<>();
 
   private SeedIndex() {}
 
@@ -25,7 +26,8 @@ public final class SeedIndex {
   }
 
   public static boolean consume(Player player, Material seedMaterial) {
-    if (player == null || seedMaterial == null || !seedMaterial.isItem()) return false;
+    if (player == null || seedMaterial == null || seedMaterial.isAir() || !seedMaterial.isItem())
+      return false;
 
     PlayerInventory inventory = player.getInventory();
     UUID uuid = player.getUniqueId();
@@ -60,11 +62,9 @@ public final class SeedIndex {
 
     if (stack.getAmount() > 1) {
       stack.setAmount(stack.getAmount() - 1);
-      if (slot == 40) inventory.setItemInOffHand(stack);
-      else inventory.setItem(slot, stack);
+      inventory.setItem(slot, stack);
     } else {
-      if (slot == 40) inventory.setItemInOffHand(null);
-      else inventory.clear(slot);
+      inventory.setItem(slot, null);
       cache.put(material, findNextSlot(inventory, material));
     }
     return true;
