@@ -1,5 +1,7 @@
 package dev.replenish;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -17,10 +19,10 @@ public final class AgeMetaRegistry {
     }
   }
 
-  private final AgeMeta[] metadataArray;
+  private final Map<Material, AgeMeta> metadataMap;
 
   public AgeMetaRegistry(Plugin plugin) {
-    this.metadataArray = new AgeMeta[Material.values().length];
+    this.metadataMap = new EnumMap<>(Material.class);
     Material[] supportedCrops = {
       Material.WHEAT,
       Material.CARROTS,
@@ -36,7 +38,7 @@ public final class AgeMetaRegistry {
       try {
         BlockData data = Bukkit.createBlockData(material);
         if (data instanceof Ageable ageable) {
-          metadataArray[material.ordinal()] = new AgeMeta(ageable.getMaximumAge());
+          metadataMap.put(material, new AgeMeta(ageable.getMaximumAge()));
         }
       } catch (Throwable error) {
         plugin.getLogger().log(Level.WARNING, "Age meta scan skipped for " + material, error);
@@ -46,7 +48,6 @@ public final class AgeMetaRegistry {
 
   public AgeMeta get(Material material) {
     if (material == null) return null;
-    int ordinal = material.ordinal();
-    return ordinal < metadataArray.length ? metadataArray[ordinal] : null;
+    return metadataMap.get(material);
   }
 }
