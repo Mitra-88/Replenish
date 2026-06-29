@@ -2,7 +2,6 @@ package dev.replenish;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -27,6 +26,7 @@ public final class DropPickupManager {
     boolean anyAdded = false;
     boolean anyDropped = false;
     Location fallbackLoc = player.getLocation();
+    World fallbackWorld = fallbackLoc.getWorld();
 
     for (ItemStack stack : drops) {
       if (stack == null || stack.getAmount() <= 0 || stack.getType().isAir()) continue;
@@ -34,7 +34,6 @@ public final class DropPickupManager {
       try {
         ItemStack itemToGive = stack.clone();
         int originalAmount = itemToGive.getAmount();
-
         Map<Integer, ItemStack> leftovers = inventory.addItem(itemToGive);
 
         if (leftovers.isEmpty()) {
@@ -48,9 +47,8 @@ public final class DropPickupManager {
                   && world.isChunkLoaded(
                       dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
                 world.dropItemNaturally(dropLocation, leftover);
-              } else {
-                Objects.requireNonNull(fallbackLoc.getWorld())
-                    .dropItemNaturally(fallbackLoc, leftover);
+              } else if (fallbackWorld != null) {
+                fallbackWorld.dropItemNaturally(fallbackLoc, leftover);
               }
               anyDropped = true;
             }
@@ -61,8 +59,8 @@ public final class DropPickupManager {
         if (world != null
             && world.isChunkLoaded(dropLocation.getBlockX() >> 4, dropLocation.getBlockZ() >> 4)) {
           world.dropItemNaturally(dropLocation, stack);
-        } else {
-          Objects.requireNonNull(fallbackLoc.getWorld()).dropItemNaturally(fallbackLoc, stack);
+        } else if (fallbackWorld != null) {
+          fallbackWorld.dropItemNaturally(fallbackLoc, stack);
         }
         anyDropped = true;
       }
@@ -84,10 +82,8 @@ public final class DropPickupManager {
 
   public static Location centeredDropLocation(Location target) {
     if (target == null) return null;
-
     World world = target.getWorld();
     if (world == null) return null;
-
     return new Location(
         world,
         target.getBlockX() + 0.5,
