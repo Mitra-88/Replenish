@@ -84,10 +84,6 @@ public class ReplenishListener implements Listener {
           Material.GOLDEN_AXE,
           Material.DIAMOND_AXE,
           Material.NETHERITE_AXE);
-  private static final EnumSet<Material> JUNGLE_ANCHOR_BLOCKS =
-      EnumSet.of(
-          Material.JUNGLE_LOG, Material.STRIPPED_JUNGLE_LOG,
-          Material.JUNGLE_WOOD, Material.STRIPPED_JUNGLE_WOOD);
 
   public ReplenishListener(ReplenishPlugin plugin, AgeMetaRegistry ageMetaRegistry) {
     this.plugin = plugin;
@@ -352,7 +348,7 @@ public class ReplenishListener implements Listener {
   }
 
   private boolean isJungle(Material material) {
-    return JUNGLE_ANCHOR_BLOCKS.contains(material);
+    return CropConstants.JUNGLE_ANCHOR_BLOCKS.contains(material);
   }
 
   private static Material seedFor(Material crop) {

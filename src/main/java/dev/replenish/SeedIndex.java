@@ -18,8 +18,7 @@ public final class SeedIndex {
 
   private SeedIndex() {}
 
-  public static synchronized void init(JavaPlugin plugin) {
-  }
+  public static synchronized void init(JavaPlugin plugin) {}
 
   public static void invalidate(UUID uuid) {
     cacheByPlayer.remove(uuid);

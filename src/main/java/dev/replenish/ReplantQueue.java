@@ -242,9 +242,7 @@ public final class ReplantQueue {
       if (data instanceof Directional directional) {
         directional.setFacing(face);
         Block attached = block.getRelative(face);
-        String attachedName = attached.getType().name();
-
-        if (!attachedName.contains("JUNGLE_LOG") && !attachedName.contains("JUNGLE_WOOD")) {
+        if (!CropConstants.JUNGLE_ANCHOR_BLOCKS.contains(attached.getType())) {
           return;
         }
       } else {
