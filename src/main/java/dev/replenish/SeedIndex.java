@@ -1,97 +1,101 @@
 package dev.replenish;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 public final class SeedIndex {
 
-  private static final int NO_SLOT = -1;
-  private static final int STORAGE_SIZE = 36;
-  private static final Map<UUID, Map<Material, Integer>> cacheByPlayer = new ConcurrentHashMap<>();
+    private static final int NO_SLOT = -1;
+    private static final int STORAGE_SIZE = 36;
+    private static final Map<UUID, Map<Material, Integer>> cacheByPlayer =
+            new ConcurrentHashMap<>();
 
-  private SeedIndex() {}
+    private SeedIndex() {}
 
-  public static void invalidate(UUID uuid) {
-    cacheByPlayer.remove(uuid);
-  }
-
-  public static void invalidate(Player player) {
-    if (player != null) invalidate(player.getUniqueId());
-  }
-
-  public static boolean consume(Player player, Material seedMaterial) {
-    if (player == null || seedMaterial == null || seedMaterial.isAir() || !seedMaterial.isItem())
-      return false;
-
-    PlayerInventory inventory = player.getInventory();
-    UUID uuid = player.getUniqueId();
-
-    Map<Material, Integer> playerCache =
-        cacheByPlayer.computeIfAbsent(uuid, k -> buildIndex(inventory));
-
-    Integer cachedSlot = playerCache.get(seedMaterial);
-    if (cachedSlot != null && cachedSlot != NO_SLOT) {
-      if (tryConsume(inventory, playerCache, seedMaterial, cachedSlot)) return true;
+    public static void invalidate(UUID uuid) {
+        cacheByPlayer.remove(uuid);
     }
 
-    playerCache.clear();
-    playerCache.putAll(buildIndex(inventory));
-
-    Integer newSlot = playerCache.get(seedMaterial);
-    if (newSlot != null && newSlot != NO_SLOT) {
-      return tryConsume(inventory, playerCache, seedMaterial, newSlot);
+    public static void invalidate(Player player) {
+        if (player != null) invalidate(player.getUniqueId());
     }
 
-    playerCache.put(seedMaterial, NO_SLOT);
-    return false;
-  }
+    public static boolean consume(Player player, Material seedMaterial) {
+        if (player == null
+                || seedMaterial == null
+                || seedMaterial.isAir()
+                || !seedMaterial.isItem()) return false;
 
-  private static boolean tryConsume(
-      PlayerInventory inventory, Map<Material, Integer> cache, Material material, int slot) {
-    ItemStack stack = (slot == 40) ? inventory.getItemInOffHand() : inventory.getItem(slot);
+        PlayerInventory inventory = player.getInventory();
+        UUID uuid = player.getUniqueId();
 
-    if (stack == null || stack.getType() != material || stack.getAmount() <= 0) {
-      return false;
+        Map<Material, Integer> playerCache =
+                cacheByPlayer.computeIfAbsent(uuid, k -> buildIndex(inventory));
+
+        Integer cachedSlot = playerCache.get(seedMaterial);
+        if (cachedSlot != null && cachedSlot != NO_SLOT) {
+            if (tryConsume(inventory, playerCache, seedMaterial, cachedSlot)) return true;
+        }
+
+        playerCache.clear();
+        playerCache.putAll(buildIndex(inventory));
+
+        Integer newSlot = playerCache.get(seedMaterial);
+        if (newSlot != null && newSlot != NO_SLOT) {
+            return tryConsume(inventory, playerCache, seedMaterial, newSlot);
+        }
+
+        playerCache.put(seedMaterial, NO_SLOT);
+        return false;
     }
 
-    if (stack.getAmount() > 1) {
-      stack.setAmount(stack.getAmount() - 1);
-      inventory.setItem(slot, stack);
-    } else {
-      inventory.setItem(slot, null);
-      cache.put(material, findNextSlot(inventory, material));
-    }
-    return true;
-  }
+    private static boolean tryConsume(
+            PlayerInventory inventory, Map<Material, Integer> cache, Material material, int slot) {
+        ItemStack stack = (slot == 40) ? inventory.getItemInOffHand() : inventory.getItem(slot);
 
-  private static Map<Material, Integer> buildIndex(PlayerInventory inventory) {
-    Map<Material, Integer> index = new HashMap<>();
-    for (int i = 0; i < STORAGE_SIZE; i++) {
-      ItemStack stack = inventory.getItem(i);
-      if (stack != null && !stack.getType().isAir() && stack.getAmount() > 0) {
-        index.putIfAbsent(stack.getType(), i);
-      }
-    }
-    ItemStack offhand = inventory.getItemInOffHand();
-    if (!offhand.getType().isAir() && offhand.getAmount() > 0) {
-      index.putIfAbsent(offhand.getType(), 40);
-    }
-    return index;
-  }
+        if (stack == null || stack.getType() != material || stack.getAmount() <= 0) {
+            return false;
+        }
 
-  private static int findNextSlot(PlayerInventory inventory, Material material) {
-    for (int i = 0; i < STORAGE_SIZE; i++) {
-      ItemStack stack = inventory.getItem(i);
-      if (stack != null && stack.getType() == material && stack.getAmount() > 0) return i;
+        if (stack.getAmount() > 1) {
+            stack.setAmount(stack.getAmount() - 1);
+            inventory.setItem(slot, stack);
+        } else {
+            inventory.setItem(slot, null);
+            cache.put(material, findNextSlot(inventory, material));
+        }
+        return true;
     }
-    ItemStack offhand = inventory.getItemInOffHand();
-    if (offhand.getType() == material && offhand.getAmount() > 0) return 40;
-    return NO_SLOT;
-  }
+
+    private static Map<Material, Integer> buildIndex(PlayerInventory inventory) {
+        Map<Material, Integer> index = new HashMap<>();
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack != null && !stack.getType().isAir() && stack.getAmount() > 0) {
+                index.putIfAbsent(stack.getType(), i);
+            }
+        }
+        ItemStack offhand = inventory.getItemInOffHand();
+        if (!offhand.getType().isAir() && offhand.getAmount() > 0) {
+            index.putIfAbsent(offhand.getType(), 40);
+        }
+        return index;
+    }
+
+    private static int findNextSlot(PlayerInventory inventory, Material material) {
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack != null && stack.getType() == material && stack.getAmount() > 0) return i;
+        }
+        ItemStack offhand = inventory.getItemInOffHand();
+        if (offhand.getType() == material && offhand.getAmount() > 0) return 40;
+        return NO_SLOT;
+    }
 }
