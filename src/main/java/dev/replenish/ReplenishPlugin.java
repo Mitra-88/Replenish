@@ -196,7 +196,7 @@ public class ReplenishPlugin extends JavaPlugin {
                     defaultCrops(),
                     "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground.",
                     "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7. Only"
-                        + " crops &egrown from seeds &7on farmland are replanted.",
+                            + " crops &egrown from seeds &7on farmland are replanted.",
                     "&8[&eReplenish&8] &8» &e{crop} &7requires &e{tool}&7.",
                     "&8[&eReplenish&8] &8» &cNeed 1 &e{seed}&c.");
         }
@@ -212,7 +212,7 @@ public class ReplenishPlugin extends JavaPlugin {
                     config.getString(
                             "messages.inventory-full",
                             "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the"
-                                + " ground."),
+                                    + " ground."),
                     config.getString(
                             "messages.placed-flower",
                             "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7."
