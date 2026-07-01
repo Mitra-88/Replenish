@@ -136,25 +136,21 @@ public class ReplenishListener implements Listener {
 
   @EventHandler
   public void onClick(InventoryClickEvent event) {
-    if (event.getWhoClicked() instanceof Player player) {
-      invalidateWithCooldown(player);
-    }
+    if (event.getWhoClicked() instanceof Player player) invalidateWithCooldown(player);
   }
 
   @EventHandler
   public void onDrag(InventoryDragEvent event) {
     if (event.getWhoClicked() instanceof Player player) {
-      if (isRelevantSeed(event.getOldCursor()) || isRelevantSeed(event.getCursor())) {
+      if (isRelevantSeed(event.getOldCursor()) || isRelevantSeed(event.getCursor()))
         invalidateWithCooldown(player);
-      }
     }
   }
 
   @EventHandler
   public void onSwap(PlayerSwapHandItemsEvent event) {
-    if (isRelevantSeed(event.getMainHandItem()) || isRelevantSeed(event.getOffHandItem())) {
+    if (isRelevantSeed(event.getMainHandItem()) || isRelevantSeed(event.getOffHandItem()))
       invalidateWithCooldown(event.getPlayer());
-    }
   }
 
   @EventHandler
@@ -167,9 +163,7 @@ public class ReplenishListener implements Listener {
             .runTask(
                 plugin,
                 () -> {
-                  if (player.isOnline()) {
-                    invalidateWithCooldown(player);
-                  }
+                  if (player.isOnline()) invalidateWithCooldown(player);
                 });
       }
     }
@@ -177,16 +171,14 @@ public class ReplenishListener implements Listener {
 
   @EventHandler
   public void onDrop(PlayerDropItemEvent event) {
-    if (isRelevantSeed(event.getItemDrop().getItemStack())) {
+    if (isRelevantSeed(event.getItemDrop().getItemStack()))
       invalidateWithCooldown(event.getPlayer());
-    }
   }
 
   @EventHandler
   public void onInteract(PlayerInteractEvent event) {
-    if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isRelevantSeed(event.getItem())) {
+    if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isRelevantSeed(event.getItem()))
       invalidateWithCooldown(event.getPlayer());
-    }
   }
 
   @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -206,10 +198,7 @@ public class ReplenishListener implements Listener {
       Block below = block.getRelative(BlockFace.DOWN);
       if (below.getType() == Material.FARMLAND) {
         if (canSendMessage(player)) {
-          player.sendMessage(
-              ColorUtils.color(
-                  "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7."
-                      + " Only crops &egrown from seeds &7on farmland are replanted."));
+          player.sendMessage(ColorUtils.color(config.msgPlacedFlower));
           player.playSound(
               player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
         }
@@ -240,9 +229,8 @@ public class ReplenishListener implements Listener {
         String cropName = cropType.name().replace("_", " ");
         cropName = cropName.substring(0, 1).toUpperCase() + cropName.substring(1).toLowerCase();
         String toolName = cropType == Material.COCOA ? "Axe" : "Hoe";
-        player.sendMessage(
-            ColorUtils.color(
-                "&8[&eReplenish&8] &8» &e" + cropName + " &7requires &e" + toolName + "&7."));
+        String msg = config.msgRequiresTool.replace("{crop}", cropName).replace("{tool}", toolName);
+        player.sendMessage(ColorUtils.color(msg));
         player.playSound(
             player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
       }
@@ -278,8 +266,8 @@ public class ReplenishListener implements Listener {
         if (canSendMessage(player)) {
           String seedName = seedMaterial.name().replace("_", " ");
           seedName = seedName.substring(0, 1).toUpperCase() + seedName.substring(1).toLowerCase();
-          player.sendMessage(
-              ColorUtils.color("&8[&eReplenish&8] &8» &cNeed 1 &e" + seedName + "&c."));
+          String msg = config.msgNeedSeed.replace("{seed}", seedName);
+          player.sendMessage(ColorUtils.color(msg));
           player.playSound(
               player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0f, 1.0f);
         }
@@ -299,7 +287,7 @@ public class ReplenishListener implements Listener {
     if (!drops.isEmpty()) {
       Location dropLocation = DropPickupManager.centeredDropLocation(block.getLocation());
       if (config.directPickup) {
-        DropPickupManager.giveToPlayerOrDrop(player, dropLocation, drops);
+        DropPickupManager.giveToPlayerOrDrop(player, dropLocation, drops, config.msgInventoryFull);
       } else {
         World world = block.getWorld();
         for (ItemStack drop : drops) {
@@ -321,13 +309,11 @@ public class ReplenishListener implements Listener {
   }
 
   private BlockFace determineCocoaFacing(Block block, BlockFace originalFacing, Player player) {
-    if (originalFacing != null && isJungle(block.getRelative(originalFacing).getType())) {
+    if (originalFacing != null && isJungle(block.getRelative(originalFacing).getType()))
       return originalFacing;
-    }
     BlockFace horizontalFacing = getPlayerHorizontalFace(player);
-    if (horizontalFacing != null && isJungle(block.getRelative(horizontalFacing).getType())) {
+    if (horizontalFacing != null && isJungle(block.getRelative(horizontalFacing).getType()))
       return horizontalFacing;
-    }
     return findAdjacentJungle(block);
   }
 

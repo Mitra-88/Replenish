@@ -39,6 +39,8 @@ public class ReplenishPlugin extends JavaPlugin {
     getLogger().info("Queue size: " + cfg.maxReplantsPerTick);
     getLogger().info("Delay: " + cfg.replantDelayTicks + " tick");
 
+    getLogger().info("Running version: v" + getDescription().getVersion());
+
     boolean checkUpdates = getConfig().getBoolean("checkUpdates", true);
     updateChecker = new UpdateChecker(this, checkUpdates);
     updateChecker.check();
@@ -69,10 +71,10 @@ public class ReplenishPlugin extends JavaPlugin {
     FileConfiguration config = getConfig();
 
     boolean regenerated = false;
-    if (!config.contains("config-version") || config.getInt("config-version", 1) < 2) {
+    if (!config.contains("config-version") || config.getInt("config-version", 1) < 3) {
       getLogger().warning("Config version mismatch. Generating missing values...");
       config.options().copyDefaults(true);
-      config.set("config-version", 2);
+      config.set("config-version", 3);
       regenerated = true;
     }
 
@@ -116,7 +118,11 @@ public class ReplenishPlugin extends JavaPlugin {
             current.directPickup,
             current.replantDelayTicks,
             current.maxReplantsPerTick,
-            current.cropEnabled);
+            current.cropEnabled,
+            current.msgInventoryFull,
+            current.msgPlacedFlower,
+            current.msgRequiresTool,
+            current.msgNeedSeed);
     configCacheRef.set(newCache);
   }
 
@@ -135,9 +141,8 @@ public class ReplenishPlugin extends JavaPlugin {
       int targetAge,
       BlockFace cocoaFacingDirection) {
     ReplantQueue queue = this.replantQueue;
-    if (queue != null) {
+    if (queue != null)
       queue.enqueue(block, plantMaterial, delayTicks, targetAge, cocoaFacingDirection);
-    }
   }
 
   public static final class ConfigCache {
@@ -148,24 +153,47 @@ public class ReplenishPlugin extends JavaPlugin {
     final int maxReplantsPerTick;
     final Map<Material, Boolean> cropEnabled;
 
+    final String msgInventoryFull;
+    final String msgPlacedFlower;
+    final String msgRequiresTool;
+    final String msgNeedSeed;
+
     private ConfigCache(
         boolean enabled,
         boolean requirePlayerSeed,
         boolean directPickup,
         int replantDelayTicks,
         int maxReplantsPerTick,
-        Map<Material, Boolean> cropEnabled) {
+        Map<Material, Boolean> cropEnabled,
+        String msgInventoryFull,
+        String msgPlacedFlower,
+        String msgRequiresTool,
+        String msgNeedSeed) {
       this.enabled = enabled;
       this.requirePlayerSeed = requirePlayerSeed;
       this.directPickup = directPickup;
       this.replantDelayTicks = replantDelayTicks;
       this.maxReplantsPerTick = maxReplantsPerTick;
       this.cropEnabled = cropEnabled;
+      this.msgInventoryFull = msgInventoryFull;
+      this.msgPlacedFlower = msgPlacedFlower;
+      this.msgRequiresTool = msgRequiresTool;
+      this.msgNeedSeed = msgNeedSeed;
     }
 
     static ConfigCache getDefault() {
       return new ConfigCache(
-          true, true, true, DEFAULT_REPLANT_DELAY_TICKS, DEFAULT_MAX_REPLANTS, defaultCrops());
+          true,
+          true,
+          true,
+          DEFAULT_REPLANT_DELAY_TICKS,
+          DEFAULT_MAX_REPLANTS,
+          defaultCrops(),
+          "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground.",
+          "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7. Only crops &egrown"
+              + " from seeds &7on farmland are replanted.",
+          "&8[&eReplenish&8] &8» &e{crop} &7requires &e{tool}&7.",
+          "&8[&eReplenish&8] &8» &cNeed 1 &e{seed}&c.");
     }
 
     static ConfigCache from(FileConfiguration config, int delayTicks, int maxPerTick) {
@@ -175,7 +203,17 @@ public class ReplenishPlugin extends JavaPlugin {
           config.getBoolean("directPickup", true),
           delayTicks,
           maxPerTick,
-          readCrops(config));
+          readCrops(config),
+          config.getString(
+              "messages.inventory-full",
+              "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground."),
+          config.getString(
+              "messages.placed-flower",
+              "&8[&eReplenish&8] &8» &7This is a &eplaced flower&7, not a &ecrop&7. Only crops"
+                  + " &egrown from seeds &7on farmland are replanted."),
+          config.getString(
+              "messages.requires-tool", "&8[&eReplenish&8] &8» &e{crop} &7requires &e{tool}&7."),
+          config.getString("messages.need-seed", "&8[&eReplenish&8] &8» &cNeed 1 &e{seed}&c."));
     }
 
     private static Map<Material, Boolean> readCrops(FileConfiguration config) {

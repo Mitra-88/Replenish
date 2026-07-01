@@ -14,7 +14,10 @@ public final class DropPickupManager {
   private DropPickupManager() {}
 
   public static void giveToPlayerOrDrop(
-      Player player, Location dropLocation, Collection<ItemStack> drops) {
+      Player player,
+      Location dropLocation,
+      Collection<ItemStack> drops,
+      String inventoryFullMessage) {
     if (player == null
         || !player.isOnline()
         || dropLocation == null
@@ -67,9 +70,7 @@ public final class DropPickupManager {
     }
 
     if (anyDropped) {
-      player.sendMessage(
-          ColorUtils.color(
-              "&8[&eReplenish&8] &8» &7Your inventory is full! Items dropped on the ground."));
+      player.sendMessage(ColorUtils.color(inventoryFullMessage));
       player.playSound(
           player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.PLAYERS, 1.0f, 0.5f);
     }
