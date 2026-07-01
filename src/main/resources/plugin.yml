@@ -1,6 +1,6 @@
 name: Replenish
 main: dev.replenish.ReplenishPlugin
-version: 5.4.1
+version: "${project.version}"
 api-version: "26.2"
 description: "Auto-replants crops with age preservation, Fortune-respecting drops, and direct pickup."
 authors: [ "Mitra-88" ]
